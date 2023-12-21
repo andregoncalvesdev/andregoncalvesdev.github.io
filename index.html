@@ -23,7 +23,10 @@
   </head>
   <body>
     <script>
-      console.log(window.navigator.userAgent);
+      setTimeout(() => {
+        window.alert(window.navigator.userAgent);
+      }, 4000);
+
       // When the iframe has loaded
       function getParameterByName(name, url) {
         if (!url) url = window.location.href;
