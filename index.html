@@ -1,70 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <title>title</title>
-    <style>
-
-        body, html {
-        padding: 0;
-          height: 100%;
-          width: 100%;
-          overflow: hidden;
-          border: 2px solid cyan;
-          margin: 0;
-          display: flex;
-          flex: 1 0;
-        }
-        iframe {
-          border: none;
-        }
-
-    </style>
-  </head>
-  <body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script>
-    setTimeout(() => {
-      var p = document.createElement("p");
-
-      p.textContent = navigator.userAgent;
-
-      document.body.appendChild(p);
-    }, 3000);
-
-      // When the iframe has loaded
-      function getParameterByName(name, url) {
-        if (!url) url = window.location.href;
-        name = name.replace(/[\[\]]/g, '\\$&');
-        var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
-            results = regex.exec(url);
-        if (!results) return null;
-        if (!results[2]) return '';
-        return decodeURIComponent(results[2].replace(/\+/g, ' '));
-    }
-
-    // Get the URL parameter 'url'
-    var urlParam = getParameterByName('url');
-
-    console.log('urlParam: ', urlParam);
-
-    // Create an iframe with the specified URL
-    var iframe = document.createElement('iframe');
-    iframe.src = urlParam;
-    iframe.width = '100%';
-    iframe.fetchpriority = "auto";
-    iframe.sandbox = "allow-same-origin allow-scripts allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-presentation allow-storage-access-by-user-activation allow-top-navigation-by-user-activation";
-    iframe.style.display = 'none';  // Hide the iframe initially
-
-    // Append the iframe to the body
-    document.body.appendChild(iframe);
-
-    // Wait for the iframe to load before displaying it
-    iframe.onload = function() {
-        iframe.style.display = 'block';  // Show the iframe after it has loaded
-    };
-  </script>
+        function onButtonClick() {
+          window.open('https://next-server.topper-web.enterprise.engineering-development.uphold.aws/?bt=eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjY0ZWMxMmM5LTVjODItNDdkZC1iMWQ5LTgyMDZkY2ZlNTRmNiJ9.eyJqdGkiOiJmZGNmNmYzYS1iZDk2LTRiYmItOTZkZC0wNDBmNzU3ZGMyMSIsInN1YiI6IjcyOGMzY2VhLWE2YmMtNGQ5NS04NWIyLTJkZmMyOTQ5MTQ3YyIsImlhdCI6MTcyMjQ0NjYwMywic291cmNlIjp7ImFzc2V0IjoiRVRIIiwibmV0d29yayI6ImV0aGVyZXVtIn0sInRhcmdldCI6eyJhc3NldCI6IkVVUiIsImFtb3VudCI6IjE2MCJ9fQ.VOiZRQc-hWzBzHOySO6lP9m2nVz-sTtoPI61wMy5j0Jvdc8GnTHD9oHSKyXCQBCZLssVvyrvxWeRBObLSfCnwA&events=orderWalletSendButtonClicked')
+        }
+    </script>
+</head>
+<body>
+    <button onclick="onButtonClick()">Click me</button>
 </body>
-
-  </iframe>
-  </body>
 </html>
