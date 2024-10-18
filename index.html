@@ -4,8 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script>
-        function onButtonClick() {
-          window.open('https://next-server.topper-web.enterprise.engineering-development.uphold.aws/?bt=eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjY0ZWMxMmM5LTVjODItNDdkZC1iMWQ5LTgyMDZkY2ZlNTRmNiJ9.eyJqdGkiOiJmZGNmNmYzYS1iZDk2LTRiYmItOTZkZC0wNDBmNzU3ZGMyMSIsInN1YiI6IjcyOGMzY2VhLWE2YmMtNGQ5NS04NWIyLTJkZmMyOTQ5MTQ3YyIsImlhdCI6MTcyMjQ0NjYwMywic291cmNlIjp7ImFzc2V0IjoiRVRIIiwibmV0d29yayI6ImV0aGVyZXVtIn0sInRhcmdldCI6eyJhc3NldCI6IkVVUiIsImFtb3VudCI6IjE2MCJ9fQ.VOiZRQc-hWzBzHOySO6lP9m2nVz-sTtoPI61wMy5j0Jvdc8GnTHD9oHSKyXCQBCZLssVvyrvxWeRBObLSfCnwA&events=orderWalletSendButtonClicked')
+        const url = 'https://next-server.topper-web.enterprise.engineering-development.uphold.aws/?bt=eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjY0ZWMxMmM5LTVjODItNDdkZC1iMWQ5LTgyMDZkY2ZlNTRmNiJ9.eyJqdGkiOiJmZGNmNmYzYS1iZDk2LTRiYmItOTZkZC0wNDBmNzU3ZGMyMSIsInN1YiI6IjcyOGMzY2VhLWE2YmMtNGQ5NS04NWIyLTJkZmMyOTQ5MTQ3YyIsImlhdCI6MTcyMjQ0NjYwMywic291cmNlIjp7ImFzc2V0IjoiRVRIIiwibmV0d29yayI6ImV0aGVyZXVtIn0sInRhcmdldCI6eyJhc3NldCI6IkVVUiIsImFtb3VudCI6IjE2MCJ9fQ.VOiZRQc-hWzBzHOySO6lP9m2nVz-sTtoPI61wMy5j0Jvdc8GnTHD9oHSKyXCQBCZLssVvyrvxWeRBObLSfCnwA&events=orderWalletSendButtonClicked';
+
+        function openNewTab() {
+            window.open(url);
+        }
+
+        function openSameTab() {
+            window.location.href = url;
         }
 
         window.addEventListener("load", function() {
@@ -16,6 +22,13 @@
     </script>
 </head>
 <body>
-    <button onclick="onButtonClick()">Click me</button>
+    <button onclick="openNewTab()">Open in New Tab</button>
+    <button onclick="openSameTab()">Navigate to URL</button>
+
+    <iframe 
+        src="https://next-server.topper-web.enterprise.engineering-development.uphold.aws/?bt=eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjY0ZWMxMmM5LTVjODItNDdkZC1iMWQ5LTgyMDZkY2ZlNTRmNiJ9.eyJqdGkiOiJmZGNmNmYzYS1iZDk2LTRiYmItOTZkZC0wNDBmNzU3ZGMyMSIsInN1YiI6IjcyOGMzY2VhLWE2YmMtNGQ5NS04NWIyLTJkZmMyOTQ5MTQ3YyIsImlhdCI6MTcyMjQ0NjYwMywic291cmNlIjp7ImFzc2V0IjoiRVRIIiwibmV0d29yayI6ImV0aGVyZXVtIn0sInRhcmdldCI6eyJhc3NldCI6IkVVUiIsImFtb3VudCI6IjE2MCJ9fQ.VOiZRQc-hWzBzHOySO6lP9m2nVz-sTtoPI61wMy5j0Jvdc8GnTHD9oHSKyXCQBCZLssVvyrvxWeRBObLSfCnwA&events=orderWalletSendButtonClicked" 
+        width="420" 
+        height="640">
+    </iframe>
 </body>
 </html>
