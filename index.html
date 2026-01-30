@@ -40,15 +40,14 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 24px;
+      gap: 28px;
     }
 
     .profile-photo {
-      width: clamp(180px, 30vw, 280px);
+      width: clamp(200px, 35vw, 320px);
       height: auto;
       border-radius: 50%;
       object-fit: cover;
-      box-shadow: 0 0 60px rgba(0, 102, 255, 0.3);
     }
 
     .info {
@@ -57,17 +56,17 @@
     }
 
     .name {
-      font-size: clamp(1rem, 2.5vw, 1.25rem);
+      font-size: clamp(1.1rem, 2.5vw, 1.4rem);
       font-weight: 400;
-      letter-spacing: 0.1em;
-      margin-bottom: 6px;
+      letter-spacing: 0.15em;
+      margin-bottom: 8px;
     }
 
     .role {
-      font-size: clamp(0.75rem, 1.5vw, 0.875rem);
+      font-size: clamp(0.8rem, 1.5vw, 0.95rem);
       font-weight: 300;
-      letter-spacing: 0.05em;
-      opacity: 0.7;
+      letter-spacing: 0.08em;
+      opacity: 0.6;
     }
   </style>
 </head>
@@ -93,7 +92,7 @@
 
     // Scene setup
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
 
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -101,206 +100,157 @@
     renderer.setClearColor(0x000000, 1);
     document.body.appendChild(renderer.domElement);
 
-    // Galaxy particles
-    const galaxyCount = 5000;
-    const galaxyPositions = new Float32Array(galaxyCount * 3);
-    const galaxyColors = new Float32Array(galaxyCount * 3);
-    const galaxySizes = new Float32Array(galaxyCount);
+    // Stars / Galaxy particles
+    const starsCount = 3000;
+    const starsPositions = new Float32Array(starsCount * 3);
+    const starsSizes = new Float32Array(starsCount);
 
-    for (let i = 0; i < galaxyCount; i++) {
+    for (let i = 0; i < starsCount; i++) {
       const i3 = i * 3;
-      const radius = Math.random() * 15 + 2;
-      const angle = Math.random() * Math.PI * 2;
-      const spiral = (Math.random() - 0.5) * 2;
+      const radius = Math.random() * 100 + 20;
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos((Math.random() * 2) - 1);
 
-      galaxyPositions[i3] = Math.cos(angle) * radius + (Math.random() - 0.5) * 2;
-      galaxyPositions[i3 + 1] = (Math.random() - 0.5) * 8;
-      galaxyPositions[i3 + 2] = Math.sin(angle) * radius + (Math.random() - 0.5) * 2 - 10;
+      starsPositions[i3] = radius * Math.sin(phi) * Math.cos(theta);
+      starsPositions[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+      starsPositions[i3 + 2] = radius * Math.cos(phi) - 50;
 
-      // Color variation (white to light blue)
-      const colorMix = Math.random();
-      galaxyColors[i3] = 0.8 + colorMix * 0.2;
-      galaxyColors[i3 + 1] = 0.85 + colorMix * 0.15;
-      galaxyColors[i3 + 2] = 1.0;
-
-      galaxySizes[i] = Math.random() * 2 + 0.5;
+      starsSizes[i] = Math.random() * 1.5 + 0.5;
     }
 
-    const galaxyGeometry = new THREE.BufferGeometry();
-    galaxyGeometry.setAttribute('position', new THREE.BufferAttribute(galaxyPositions, 3));
-    galaxyGeometry.setAttribute('color', new THREE.BufferAttribute(galaxyColors, 3));
-    galaxyGeometry.setAttribute('size', new THREE.BufferAttribute(galaxySizes, 1));
+    const starsGeometry = new THREE.BufferGeometry();
+    starsGeometry.setAttribute('position', new THREE.BufferAttribute(starsPositions, 3));
+    starsGeometry.setAttribute('size', new THREE.BufferAttribute(starsSizes, 1));
 
-    const galaxyMaterial = new THREE.ShaderMaterial({
+    const starsMaterial = new THREE.ShaderMaterial({
       uniforms: {
-        uTime: { value: 0 },
-        uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) }
+        uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
+        uTime: { value: 0 }
       },
       vertexShader: `
         attribute float size;
-        attribute vec3 color;
-        varying vec3 vColor;
-        varying float vAlpha;
         uniform float uPixelRatio;
+        uniform float uTime;
+        varying float vAlpha;
 
         void main() {
-          vColor = color;
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
           gl_Position = projectionMatrix * mvPosition;
-          gl_PointSize = size * uPixelRatio * (200.0 / -mvPosition.z);
-          vAlpha = smoothstep(20.0, 5.0, -mvPosition.z);
+          gl_PointSize = size * uPixelRatio * (100.0 / -mvPosition.z);
+
+          // Twinkle effect
+          float twinkle = sin(uTime * 2.0 + position.x * 0.5 + position.y * 0.3) * 0.3 + 0.7;
+          vAlpha = twinkle * smoothstep(150.0, 20.0, -mvPosition.z);
         }
       `,
       fragmentShader: `
-        varying vec3 vColor;
         varying float vAlpha;
 
         void main() {
           vec2 center = gl_PointCoord - vec2(0.5);
           float dist = length(center);
           if (dist > 0.5) discard;
-          float alpha = smoothstep(0.5, 0.0, dist) * vAlpha * 0.8;
-          gl_FragColor = vec4(vColor, alpha);
+
+          float alpha = smoothstep(0.5, 0.0, dist) * vAlpha;
+          gl_FragColor = vec4(1.0, 1.0, 1.0, alpha);
         }
       `,
       transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      vertexColors: true
-    });
-
-    const galaxy = new THREE.Points(galaxyGeometry, galaxyMaterial);
-    scene.add(galaxy);
-
-    // Morphing blue cloud using multiple overlapping spheres with noise
-    const cloudGroup = new THREE.Group();
-
-    const cloudMaterial = new THREE.ShaderMaterial({
-      uniforms: {
-        uTime: { value: 0 },
-        uColor: { value: new THREE.Color(0x0055ff) }
-      },
-      vertexShader: `
-        uniform float uTime;
-        varying vec3 vNormal;
-        varying float vDisplacement;
-
-        // Simplex noise function
-        vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-        vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-        vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
-        vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
-
-        float snoise(vec3 v) {
-          const vec2 C = vec2(1.0/6.0, 1.0/3.0);
-          const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
-          vec3 i  = floor(v + dot(v, C.yyy));
-          vec3 x0 = v - i + dot(i, C.xxx);
-          vec3 g = step(x0.yzx, x0.xyz);
-          vec3 l = 1.0 - g;
-          vec3 i1 = min(g.xyz, l.zxy);
-          vec3 i2 = max(g.xyz, l.zxy);
-          vec3 x1 = x0 - i1 + C.xxx;
-          vec3 x2 = x0 - i2 + C.yyy;
-          vec3 x3 = x0 - D.yyy;
-          i = mod289(i);
-          vec4 p = permute(permute(permute(
-            i.z + vec4(0.0, i1.z, i2.z, 1.0))
-            + i.y + vec4(0.0, i1.y, i2.y, 1.0))
-            + i.x + vec4(0.0, i1.x, i2.x, 1.0));
-          float n_ = 0.142857142857;
-          vec3 ns = n_ * D.wyz - D.xzx;
-          vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
-          vec4 x_ = floor(j * ns.z);
-          vec4 y_ = floor(j - 7.0 * x_);
-          vec4 x = x_ *ns.x + ns.yyyy;
-          vec4 y = y_ *ns.x + ns.yyyy;
-          vec4 h = 1.0 - abs(x) - abs(y);
-          vec4 b0 = vec4(x.xy, y.xy);
-          vec4 b1 = vec4(x.zw, y.zw);
-          vec4 s0 = floor(b0)*2.0 + 1.0;
-          vec4 s1 = floor(b1)*2.0 + 1.0;
-          vec4 sh = -step(h, vec4(0.0));
-          vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
-          vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
-          vec3 p0 = vec3(a0.xy, h.x);
-          vec3 p1 = vec3(a0.zw, h.y);
-          vec3 p2 = vec3(a1.xy, h.z);
-          vec3 p3 = vec3(a1.zw, h.w);
-          vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
-          p0 *= norm.x;
-          p1 *= norm.y;
-          p2 *= norm.z;
-          p3 *= norm.w;
-          vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
-          m = m * m;
-          return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
-        }
-
-        void main() {
-          vNormal = normal;
-
-          float noise = snoise(position * 0.8 + uTime * 0.15);
-          float noise2 = snoise(position * 1.5 - uTime * 0.1);
-          float displacement = noise * 0.4 + noise2 * 0.2;
-          vDisplacement = displacement;
-
-          vec3 newPosition = position + normal * displacement;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
-        }
-      `,
-      fragmentShader: `
-        uniform vec3 uColor;
-        uniform float uTime;
-        varying vec3 vNormal;
-        varying float vDisplacement;
-
-        void main() {
-          float fresnel = pow(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), 2.0);
-          float intensity = fresnel * 0.6 + 0.2;
-          intensity += vDisplacement * 0.3;
-
-          vec3 color = uColor * intensity;
-          float alpha = fresnel * 0.4 + 0.1;
-
-          gl_FragColor = vec4(color, alpha);
-        }
-      `,
-      transparent: true,
-      side: THREE.DoubleSide,
       depthWrite: false,
       blending: THREE.AdditiveBlending
     });
 
-    // Create multiple cloud layers
-    const cloudGeometry = new THREE.IcosahedronGeometry(3, 4);
-    const cloud1 = new THREE.Mesh(cloudGeometry, cloudMaterial);
-    cloud1.position.z = -5;
-    cloudGroup.add(cloud1);
+    const stars = new THREE.Points(starsGeometry, starsMaterial);
+    scene.add(stars);
 
-    const cloud2Geometry = new THREE.IcosahedronGeometry(2.5, 4);
-    const cloud2Material = cloudMaterial.clone();
-    cloud2Material.uniforms.uColor.value = new THREE.Color(0x0088ff);
-    const cloud2 = new THREE.Mesh(cloud2Geometry, cloud2Material);
-    cloud2.position.set(1, 0.5, -6);
-    cloudGroup.add(cloud2);
+    // Subtle blue nebula glow (far background)
+    const nebulaGeometry = new THREE.PlaneGeometry(80, 80);
+    const nebulaMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 }
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        varying vec2 vUv;
 
-    const cloud3Geometry = new THREE.IcosahedronGeometry(2, 4);
-    const cloud3Material = cloudMaterial.clone();
-    cloud3Material.uniforms.uColor.value = new THREE.Color(0x0044cc);
-    const cloud3 = new THREE.Mesh(cloud3Geometry, cloud3Material);
-    cloud3.position.set(-1, -0.5, -4);
-    cloudGroup.add(cloud3);
+        // Simple noise
+        float noise(vec2 p) {
+          return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+        }
 
-    scene.add(cloudGroup);
+        float smoothNoise(vec2 p) {
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          f = f * f * (3.0 - 2.0 * f);
 
-    camera.position.z = 5;
+          float a = noise(i);
+          float b = noise(i + vec2(1.0, 0.0));
+          float c = noise(i + vec2(0.0, 1.0));
+          float d = noise(i + vec2(1.0, 1.0));
+
+          return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+        }
+
+        float fbm(vec2 p) {
+          float value = 0.0;
+          float amplitude = 0.5;
+          for (int i = 0; i < 4; i++) {
+            value += amplitude * smoothNoise(p);
+            p *= 2.0;
+            amplitude *= 0.5;
+          }
+          return value;
+        }
+
+        void main() {
+          vec2 uv = vUv - 0.5;
+          float dist = length(uv);
+
+          // Animated noise for morphing effect
+          vec2 noiseCoord = uv * 2.0 + uTime * 0.05;
+          float n = fbm(noiseCoord);
+          float n2 = fbm(noiseCoord * 1.5 - uTime * 0.03);
+
+          // Blue gradient with noise
+          float intensity = smoothstep(0.8, 0.0, dist) * 0.15;
+          intensity *= (n * 0.5 + n2 * 0.5);
+
+          vec3 color = vec3(0.0, 0.3, 1.0) * intensity;
+
+          gl_FragColor = vec4(color, intensity);
+        }
+      `,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    });
+
+    const nebula = new THREE.Mesh(nebulaGeometry, nebulaMaterial);
+    nebula.position.z = -60;
+    scene.add(nebula);
+
+    camera.position.z = 30;
 
     // Mouse interaction
     const mouse = { x: 0, y: 0 };
     window.addEventListener('mousemove', (e) => {
       mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    });
+
+    // Touch support
+    window.addEventListener('touchmove', (e) => {
+      if (e.touches.length > 0) {
+        mouse.x = (e.touches[0].clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(e.touches[0].clientY / window.innerHeight) * 2 + 1;
+      }
     });
 
     // Animation
@@ -311,23 +261,19 @@
 
       const time = clock.getElapsedTime();
 
-      // Update galaxy
-      galaxyMaterial.uniforms.uTime.value = time;
-      galaxy.rotation.y += 0.0002;
-      galaxy.rotation.x = Math.sin(time * 0.1) * 0.1;
+      // Update uniforms
+      starsMaterial.uniforms.uTime.value = time;
+      nebulaMaterial.uniforms.uTime.value = time;
 
-      // Update clouds
-      cloudGroup.children.forEach((cloud, i) => {
-        cloud.material.uniforms.uTime.value = time + i * 2;
-        cloud.rotation.x = time * 0.05 + i;
-        cloud.rotation.y = time * 0.08 + i;
-      });
+      // Slow rotation
+      stars.rotation.y += 0.0001;
+      stars.rotation.x += 0.00005;
 
       // Subtle parallax
-      cloudGroup.position.x = mouse.x * 0.3;
-      cloudGroup.position.y = mouse.y * 0.2;
-      galaxy.position.x = mouse.x * 0.1;
-      galaxy.position.y = mouse.y * 0.1;
+      stars.position.x = mouse.x * 2;
+      stars.position.y = mouse.y * 1;
+      nebula.position.x = mouse.x * 5;
+      nebula.position.y = mouse.y * 3;
 
       renderer.render(scene, camera);
     }
@@ -337,7 +283,7 @@
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
-      galaxyMaterial.uniforms.uPixelRatio.value = Math.min(window.devicePixelRatio, 2);
+      starsMaterial.uniforms.uPixelRatio.value = Math.min(window.devicePixelRatio, 2);
     });
 
     animate();
