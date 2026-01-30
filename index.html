@@ -1,39 +1,113 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>André Gonçalves</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="André Gonçalves - Developer @ moxy.studio">
-    <meta name="keywords" content="andregoncalvesdev, react, developer">
-    <meta name="author" content="andregoncalvesdev">
-    <meta property="og:title" content="André Gonçalves">
-    <meta property="og:description" content="André Gonçalves - Developer @ moxy.studio">
-    <meta property="og:image" content="https://andregoncalvesdev.github.io/images/andre-goncalves-optimized.jpg">
-    <meta property="og:url" content="http://andregoncalvesdev.github.io">
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Soon</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon/apple-icon-180x180.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon/favicon-16x16.png">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-    <link rel="apple-touch-icon" sizes="57x57" href="/assets/favicon/apple-icon-57x57.png">
-    <link rel="apple-touch-icon" sizes="60x60" href="/assets/favicon/apple-icon-60x60.png">
-    <link rel="apple-touch-icon" sizes="72x72" href="/assets/favicon/apple-icon-72x72.png">
-    <link rel="apple-touch-icon" sizes="76x76" href="/assets/favicon/apple-icon-76x76.png">
-    <link rel="apple-touch-icon" sizes="114x114" href="/assets/favicon/apple-icon-114x114.png">
-    <link rel="apple-touch-icon" sizes="120x120" href="/assets/favicon/apple-icon-120x120.png">
-    <link rel="apple-touch-icon" sizes="144x144" href="/assets/favicon/apple-icon-144x144.png">
-    <link rel="apple-touch-icon" sizes="152x152" href="/assets/favicon/apple-icon-152x152.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon/apple-icon-180x180.png">
-    <link rel="icon" type="image/png" sizes="192x192"  href="/android-icon-192x192.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="96x96" href="/assets/favicon/favicon-96x96.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon/favicon-16x16.png">
-    <link rel="manifest" href="/assets/favicon/manifest.json">
-    <meta name="msapplication-TileColor" content="#ffffff">
-    <meta name="msapplication-TileImage" content="/assets/favicon/ms-icon-144x144.png">
-    <meta name="theme-color" content="#ffffff">
-  </head>
+    body {
+      overflow: hidden;
+      background: #000;
+    }
 
-  <body>
-    <div id="app"></div>
+    canvas {
+      display: block;
+      position: fixed;
+      top: 0;
+      left: 0;
+    }
 
-    <script src="https://use.fontawesome.com/82527bf42e.js"></script>
-    <script src="/assets/index.bundle.js"></script>
-  </body>
+    .text-overlay {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      font-size: clamp(3rem, 10vw, 8rem);
+      font-weight: 300;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: #fff;
+      z-index: 10;
+      pointer-events: none;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="text-overlay">Soon</div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
+      }
+    }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+
+    // Scene setup
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    document.body.appendChild(renderer.domElement);
+
+    // Particles
+    const particlesCount = 2000;
+    const positions = new Float32Array(particlesCount * 3);
+
+    for (let i = 0; i < particlesCount * 3; i++) {
+      positions[i] = (Math.random() - 0.5) * 20;
+    }
+
+    const particlesGeometry = new THREE.BufferGeometry();
+    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+    const particlesMaterial = new THREE.PointsMaterial({
+      color: 0xffffff,
+      size: 0.02,
+      transparent: true,
+      opacity: 0.6,
+      sizeAttenuation: true
+    });
+
+    const particles = new THREE.Points(particlesGeometry, particlesMaterial);
+    scene.add(particles);
+
+    camera.position.z = 5;
+
+    // Animation
+    function animate() {
+      requestAnimationFrame(animate);
+
+      particles.rotation.y += 0.0005;
+      particles.rotation.x += 0.0002;
+
+      renderer.render(scene, camera);
+    }
+
+    // Handle resize
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    animate();
+  </script>
+</body>
 </html>
