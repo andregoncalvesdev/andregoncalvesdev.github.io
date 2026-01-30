@@ -7,6 +7,9 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon/apple-icon-180x180.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon/favicon-16x16.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400&display=swap" rel="stylesheet">
   <style>
     * {
       margin: 0;
@@ -17,6 +20,7 @@
     body {
       overflow: hidden;
       background: #000;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
     canvas {
@@ -24,10 +28,58 @@
       position: fixed;
       top: 0;
       left: 0;
+      z-index: 0;
+    }
+
+    .content {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .profile-photo {
+      width: clamp(180px, 30vw, 280px);
+      height: auto;
+      border-radius: 50%;
+      object-fit: cover;
+      box-shadow: 0 0 60px rgba(0, 102, 255, 0.3);
+    }
+
+    .info {
+      text-align: center;
+      color: #fff;
+    }
+
+    .name {
+      font-size: clamp(1rem, 2.5vw, 1.25rem);
+      font-weight: 400;
+      letter-spacing: 0.1em;
+      margin-bottom: 6px;
+    }
+
+    .role {
+      font-size: clamp(0.75rem, 1.5vw, 0.875rem);
+      font-weight: 300;
+      letter-spacing: 0.05em;
+      opacity: 0.7;
     }
   </style>
 </head>
 <body>
+  <div class="content">
+    <img src="/assets/profile.png" alt="André Gonçalves" class="profile-photo">
+    <div class="info">
+      <div class="name">André Gonçalves</div>
+      <div class="role">Code at Uphold</div>
+    </div>
+  </div>
+
   <script type="importmap">
     {
       "imports": {
@@ -42,225 +94,210 @@
     // Scene setup
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
 
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setClearColor(0x000000, 1);
     document.body.appendChild(renderer.domElement);
 
-    // Profile silhouette points (traced from the photo - side profile facing left)
-    // Normalized coordinates, will be scaled
-    const profileOutline = [
-      // Top of head / hair
-      [0.15, 0.95], [0.08, 0.92], [0.02, 0.88], [-0.02, 0.82], [-0.04, 0.75],
-      // Forehead curls
-      [0.12, 0.90], [0.18, 0.88], [0.10, 0.85], [0.05, 0.82], [0.15, 0.80],
-      [0.08, 0.78], [0.20, 0.85], [0.22, 0.80],
-      // Forehead
-      [-0.05, 0.68], [-0.08, 0.60], [-0.10, 0.52],
-      // Brow
-      [-0.12, 0.45], [-0.18, 0.42],
-      // Nose bridge
-      [-0.15, 0.38], [-0.14, 0.32], [-0.16, 0.26], [-0.20, 0.20],
-      // Nose tip
-      [-0.28, 0.15], [-0.30, 0.12], [-0.28, 0.08],
-      // Upper lip area
-      [-0.22, 0.05], [-0.18, 0.02],
-      // Lips
-      [-0.20, -0.02], [-0.22, -0.05], [-0.18, -0.08],
-      // Chin
-      [-0.15, -0.15], [-0.12, -0.22], [-0.08, -0.30], [-0.02, -0.38],
-      // Jaw line
-      [0.05, -0.42], [0.15, -0.45], [0.25, -0.46],
-      // Neck
-      [0.10, -0.55], [0.08, -0.65], [0.05, -0.75],
-      // Back of neck
-      [0.20, -0.70], [0.25, -0.60], [0.28, -0.50],
-      // Back of head
-      [0.30, -0.40], [0.35, -0.25], [0.38, -0.10], [0.40, 0.05],
-      [0.42, 0.20], [0.40, 0.35], [0.38, 0.50], [0.35, 0.62],
-      [0.30, 0.72], [0.25, 0.82], [0.20, 0.90],
-      // Ear area
-      [0.32, 0.15], [0.35, 0.10], [0.36, 0.05], [0.35, 0.00], [0.32, -0.05],
-      [0.30, 0.02], [0.28, 0.08],
-      // Earring
-      [0.34, -0.02], [0.36, -0.04],
-    ];
+    // Galaxy particles
+    const galaxyCount = 5000;
+    const galaxyPositions = new Float32Array(galaxyCount * 3);
+    const galaxyColors = new Float32Array(galaxyCount * 3);
+    const galaxySizes = new Float32Array(galaxyCount);
 
-    // Create glowing blue circle (backdrop)
-    const circleGeometry = new THREE.CircleGeometry(2.2, 64);
-    const circleMaterial = new THREE.ShaderMaterial({
-      uniforms: {
-        uTime: { value: 0 },
-        uColor: { value: new THREE.Color(0x0066ff) }
-      },
-      vertexShader: `
-        varying vec2 vUv;
-        void main() {
-          vUv = uv;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        uniform float uTime;
-        uniform vec3 uColor;
-        varying vec2 vUv;
+    for (let i = 0; i < galaxyCount; i++) {
+      const i3 = i * 3;
+      const radius = Math.random() * 15 + 2;
+      const angle = Math.random() * Math.PI * 2;
+      const spiral = (Math.random() - 0.5) * 2;
 
-        void main() {
-          vec2 center = vec2(0.5, 0.5);
-          float dist = distance(vUv, center);
+      galaxyPositions[i3] = Math.cos(angle) * radius + (Math.random() - 0.5) * 2;
+      galaxyPositions[i3 + 1] = (Math.random() - 0.5) * 8;
+      galaxyPositions[i3 + 2] = Math.sin(angle) * radius + (Math.random() - 0.5) * 2 - 10;
 
-          // Radial gradient with glow
-          float alpha = smoothstep(0.5, 0.2, dist);
-          float glow = smoothstep(0.5, 0.35, dist) * 0.8;
+      // Color variation (white to light blue)
+      const colorMix = Math.random();
+      galaxyColors[i3] = 0.8 + colorMix * 0.2;
+      galaxyColors[i3 + 1] = 0.85 + colorMix * 0.15;
+      galaxyColors[i3 + 2] = 1.0;
 
-          // Subtle pulse
-          float pulse = sin(uTime * 0.5) * 0.1 + 0.9;
-
-          vec3 color = uColor * (glow + 0.3) * pulse;
-          gl_FragColor = vec4(color, alpha * 0.9);
-        }
-      `,
-      transparent: true,
-      side: THREE.DoubleSide
-    });
-
-    const circle = new THREE.Mesh(circleGeometry, circleMaterial);
-    circle.position.z = -1;
-    scene.add(circle);
-
-    // Create particles for the profile silhouette
-    const particleCount = 3000;
-    const positions = new Float32Array(particleCount * 3);
-    const originalPositions = new Float32Array(particleCount * 3);
-    const velocities = new Float32Array(particleCount * 3);
-    const sizes = new Float32Array(particleCount);
-
-    // Scale factor for the profile
-    const scale = 2.5;
-
-    // Generate particles along the profile outline and fill
-    for (let i = 0; i < particleCount; i++) {
-      let x, y, z;
-
-      if (i < particleCount * 0.4) {
-        // Particles on the outline
-        const idx = Math.floor(Math.random() * profileOutline.length);
-        const point = profileOutline[idx];
-        x = point[0] * scale + (Math.random() - 0.5) * 0.15;
-        y = point[1] * scale + (Math.random() - 0.5) * 0.15;
-        z = (Math.random() - 0.5) * 0.3;
-      } else if (i < particleCount * 0.7) {
-        // Particles filling the head area
-        const angle = Math.random() * Math.PI * 2;
-        const radius = Math.random() * 0.8;
-        x = (0.1 + Math.cos(angle) * radius * 0.4) * scale;
-        y = (0.3 + Math.sin(angle) * radius * 0.6) * scale;
-        z = (Math.random() - 0.5) * 0.4;
-      } else {
-        // Ambient floating particles
-        x = (Math.random() - 0.5) * 8;
-        y = (Math.random() - 0.5) * 6;
-        z = (Math.random() - 0.5) * 4 - 2;
-      }
-
-      positions[i * 3] = x;
-      positions[i * 3 + 1] = y;
-      positions[i * 3 + 2] = z;
-
-      originalPositions[i * 3] = x;
-      originalPositions[i * 3 + 1] = y;
-      originalPositions[i * 3 + 2] = z;
-
-      velocities[i * 3] = (Math.random() - 0.5) * 0.02;
-      velocities[i * 3 + 1] = (Math.random() - 0.5) * 0.02;
-      velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.02;
-
-      sizes[i] = Math.random() * 0.03 + 0.01;
+      galaxySizes[i] = Math.random() * 2 + 0.5;
     }
 
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+    const galaxyGeometry = new THREE.BufferGeometry();
+    galaxyGeometry.setAttribute('position', new THREE.BufferAttribute(galaxyPositions, 3));
+    galaxyGeometry.setAttribute('color', new THREE.BufferAttribute(galaxyColors, 3));
+    galaxyGeometry.setAttribute('size', new THREE.BufferAttribute(galaxySizes, 1));
 
-    // Custom shader material for particles
-    const particleMaterial = new THREE.ShaderMaterial({
+    const galaxyMaterial = new THREE.ShaderMaterial({
       uniforms: {
         uTime: { value: 0 },
         uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) }
       },
       vertexShader: `
         attribute float size;
-        uniform float uTime;
-        uniform float uPixelRatio;
+        attribute vec3 color;
+        varying vec3 vColor;
         varying float vAlpha;
+        uniform float uPixelRatio;
 
         void main() {
+          vColor = color;
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
           gl_Position = projectionMatrix * mvPosition;
-
-          // Size attenuation
-          gl_PointSize = size * uPixelRatio * (300.0 / -mvPosition.z);
-
-          // Fade based on distance from center
-          float dist = length(position.xy);
-          vAlpha = smoothstep(4.0, 0.0, dist) * 0.9 + 0.1;
+          gl_PointSize = size * uPixelRatio * (200.0 / -mvPosition.z);
+          vAlpha = smoothstep(20.0, 5.0, -mvPosition.z);
         }
       `,
       fragmentShader: `
+        varying vec3 vColor;
         varying float vAlpha;
 
         void main() {
-          // Circular point
           vec2 center = gl_PointCoord - vec2(0.5);
           float dist = length(center);
           if (dist > 0.5) discard;
-
-          // Soft edge
-          float alpha = smoothstep(0.5, 0.2, dist) * vAlpha;
-
-          gl_FragColor = vec4(1.0, 1.0, 1.0, alpha);
+          float alpha = smoothstep(0.5, 0.0, dist) * vAlpha * 0.8;
+          gl_FragColor = vec4(vColor, alpha);
         }
       `,
       transparent: true,
       depthWrite: false,
-      blending: THREE.AdditiveBlending
+      blending: THREE.AdditiveBlending,
+      vertexColors: true
     });
 
-    const particles = new THREE.Points(geometry, particleMaterial);
-    scene.add(particles);
+    const galaxy = new THREE.Points(galaxyGeometry, galaxyMaterial);
+    scene.add(galaxy);
 
-    // Add some ambient particles in the background
-    const bgParticleCount = 500;
-    const bgPositions = new Float32Array(bgParticleCount * 3);
+    // Morphing blue cloud using multiple overlapping spheres with noise
+    const cloudGroup = new THREE.Group();
 
-    for (let i = 0; i < bgParticleCount; i++) {
-      bgPositions[i * 3] = (Math.random() - 0.5) * 20;
-      bgPositions[i * 3 + 1] = (Math.random() - 0.5) * 15;
-      bgPositions[i * 3 + 2] = (Math.random() - 0.5) * 10 - 5;
-    }
+    const cloudMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uColor: { value: new THREE.Color(0x0055ff) }
+      },
+      vertexShader: `
+        uniform float uTime;
+        varying vec3 vNormal;
+        varying float vDisplacement;
 
-    const bgGeometry = new THREE.BufferGeometry();
-    bgGeometry.setAttribute('position', new THREE.BufferAttribute(bgPositions, 3));
+        // Simplex noise function
+        vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+        vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
 
-    const bgMaterial = new THREE.PointsMaterial({
-      color: 0x4488ff,
-      size: 0.02,
+        float snoise(vec3 v) {
+          const vec2 C = vec2(1.0/6.0, 1.0/3.0);
+          const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+          vec3 i  = floor(v + dot(v, C.yyy));
+          vec3 x0 = v - i + dot(i, C.xxx);
+          vec3 g = step(x0.yzx, x0.xyz);
+          vec3 l = 1.0 - g;
+          vec3 i1 = min(g.xyz, l.zxy);
+          vec3 i2 = max(g.xyz, l.zxy);
+          vec3 x1 = x0 - i1 + C.xxx;
+          vec3 x2 = x0 - i2 + C.yyy;
+          vec3 x3 = x0 - D.yyy;
+          i = mod289(i);
+          vec4 p = permute(permute(permute(
+            i.z + vec4(0.0, i1.z, i2.z, 1.0))
+            + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+            + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+          float n_ = 0.142857142857;
+          vec3 ns = n_ * D.wyz - D.xzx;
+          vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+          vec4 x_ = floor(j * ns.z);
+          vec4 y_ = floor(j - 7.0 * x_);
+          vec4 x = x_ *ns.x + ns.yyyy;
+          vec4 y = y_ *ns.x + ns.yyyy;
+          vec4 h = 1.0 - abs(x) - abs(y);
+          vec4 b0 = vec4(x.xy, y.xy);
+          vec4 b1 = vec4(x.zw, y.zw);
+          vec4 s0 = floor(b0)*2.0 + 1.0;
+          vec4 s1 = floor(b1)*2.0 + 1.0;
+          vec4 sh = -step(h, vec4(0.0));
+          vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
+          vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
+          vec3 p0 = vec3(a0.xy, h.x);
+          vec3 p1 = vec3(a0.zw, h.y);
+          vec3 p2 = vec3(a1.xy, h.z);
+          vec3 p3 = vec3(a1.zw, h.w);
+          vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
+          p0 *= norm.x;
+          p1 *= norm.y;
+          p2 *= norm.z;
+          p3 *= norm.w;
+          vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+          m = m * m;
+          return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+        }
+
+        void main() {
+          vNormal = normal;
+
+          float noise = snoise(position * 0.8 + uTime * 0.15);
+          float noise2 = snoise(position * 1.5 - uTime * 0.1);
+          float displacement = noise * 0.4 + noise2 * 0.2;
+          vDisplacement = displacement;
+
+          vec3 newPosition = position + normal * displacement;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 uColor;
+        uniform float uTime;
+        varying vec3 vNormal;
+        varying float vDisplacement;
+
+        void main() {
+          float fresnel = pow(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), 2.0);
+          float intensity = fresnel * 0.6 + 0.2;
+          intensity += vDisplacement * 0.3;
+
+          vec3 color = uColor * intensity;
+          float alpha = fresnel * 0.4 + 0.1;
+
+          gl_FragColor = vec4(color, alpha);
+        }
+      `,
       transparent: true,
-      opacity: 0.4,
-      sizeAttenuation: true,
+      side: THREE.DoubleSide,
+      depthWrite: false,
       blending: THREE.AdditiveBlending
     });
 
-    const bgParticles = new THREE.Points(bgGeometry, bgMaterial);
-    scene.add(bgParticles);
+    // Create multiple cloud layers
+    const cloudGeometry = new THREE.IcosahedronGeometry(3, 4);
+    const cloud1 = new THREE.Mesh(cloudGeometry, cloudMaterial);
+    cloud1.position.z = -5;
+    cloudGroup.add(cloud1);
+
+    const cloud2Geometry = new THREE.IcosahedronGeometry(2.5, 4);
+    const cloud2Material = cloudMaterial.clone();
+    cloud2Material.uniforms.uColor.value = new THREE.Color(0x0088ff);
+    const cloud2 = new THREE.Mesh(cloud2Geometry, cloud2Material);
+    cloud2.position.set(1, 0.5, -6);
+    cloudGroup.add(cloud2);
+
+    const cloud3Geometry = new THREE.IcosahedronGeometry(2, 4);
+    const cloud3Material = cloudMaterial.clone();
+    cloud3Material.uniforms.uColor.value = new THREE.Color(0x0044cc);
+    const cloud3 = new THREE.Mesh(cloud3Geometry, cloud3Material);
+    cloud3.position.set(-1, -0.5, -4);
+    cloudGroup.add(cloud3);
+
+    scene.add(cloudGroup);
 
     camera.position.z = 5;
 
     // Mouse interaction
     const mouse = { x: 0, y: 0 };
-
     window.addEventListener('mousemove', (e) => {
       mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -274,31 +311,23 @@
 
       const time = clock.getElapsedTime();
 
-      // Update uniforms
-      circleMaterial.uniforms.uTime.value = time;
-      particleMaterial.uniforms.uTime.value = time;
+      // Update galaxy
+      galaxyMaterial.uniforms.uTime.value = time;
+      galaxy.rotation.y += 0.0002;
+      galaxy.rotation.x = Math.sin(time * 0.1) * 0.1;
 
-      // Animate profile particles (gentle floating)
-      const posArray = geometry.attributes.position.array;
-      for (let i = 0; i < particleCount; i++) {
-        const i3 = i * 3;
+      // Update clouds
+      cloudGroup.children.forEach((cloud, i) => {
+        cloud.material.uniforms.uTime.value = time + i * 2;
+        cloud.rotation.x = time * 0.05 + i;
+        cloud.rotation.y = time * 0.08 + i;
+      });
 
-        // Gentle oscillation
-        posArray[i3] = originalPositions[i3] + Math.sin(time * 0.5 + i * 0.01) * 0.03;
-        posArray[i3 + 1] = originalPositions[i3 + 1] + Math.cos(time * 0.3 + i * 0.01) * 0.03;
-        posArray[i3 + 2] = originalPositions[i3 + 2] + Math.sin(time * 0.4 + i * 0.02) * 0.02;
-      }
-      geometry.attributes.position.needsUpdate = true;
-
-      // Subtle rotation based on mouse
-      particles.rotation.y = mouse.x * 0.1;
-      particles.rotation.x = mouse.y * 0.05;
-      circle.rotation.y = mouse.x * 0.05;
-      circle.rotation.x = mouse.y * 0.025;
-
-      // Rotate background particles
-      bgParticles.rotation.y += 0.0003;
-      bgParticles.rotation.x += 0.0001;
+      // Subtle parallax
+      cloudGroup.position.x = mouse.x * 0.3;
+      cloudGroup.position.y = mouse.y * 0.2;
+      galaxy.position.x = mouse.x * 0.1;
+      galaxy.position.y = mouse.y * 0.1;
 
       renderer.render(scene, camera);
     }
@@ -308,7 +337,7 @@
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
-      particleMaterial.uniforms.uPixelRatio.value = Math.min(window.devicePixelRatio, 2);
+      galaxyMaterial.uniforms.uPixelRatio.value = Math.min(window.devicePixelRatio, 2);
     });
 
     animate();
