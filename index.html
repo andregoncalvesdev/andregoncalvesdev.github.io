@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Soon</title>
+  <title>André Gonçalves</title>
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon/apple-icon-180x180.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon/favicon-16x16.png">
@@ -25,27 +25,9 @@
       top: 0;
       left: 0;
     }
-
-    .text-overlay {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-      font-size: clamp(3rem, 10vw, 8rem);
-      font-weight: 300;
-      letter-spacing: 0.3em;
-      text-transform: uppercase;
-      color: #fff;
-      z-index: 10;
-      pointer-events: none;
-      user-select: none;
-    }
   </style>
 </head>
 <body>
-  <div class="text-overlay">Soon</div>
-
   <script type="importmap">
     {
       "imports": {
@@ -60,42 +42,263 @@
     // Scene setup
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x000000, 1);
     document.body.appendChild(renderer.domElement);
 
-    // Particles
-    const particlesCount = 2000;
-    const positions = new Float32Array(particlesCount * 3);
+    // Profile silhouette points (traced from the photo - side profile facing left)
+    // Normalized coordinates, will be scaled
+    const profileOutline = [
+      // Top of head / hair
+      [0.15, 0.95], [0.08, 0.92], [0.02, 0.88], [-0.02, 0.82], [-0.04, 0.75],
+      // Forehead curls
+      [0.12, 0.90], [0.18, 0.88], [0.10, 0.85], [0.05, 0.82], [0.15, 0.80],
+      [0.08, 0.78], [0.20, 0.85], [0.22, 0.80],
+      // Forehead
+      [-0.05, 0.68], [-0.08, 0.60], [-0.10, 0.52],
+      // Brow
+      [-0.12, 0.45], [-0.18, 0.42],
+      // Nose bridge
+      [-0.15, 0.38], [-0.14, 0.32], [-0.16, 0.26], [-0.20, 0.20],
+      // Nose tip
+      [-0.28, 0.15], [-0.30, 0.12], [-0.28, 0.08],
+      // Upper lip area
+      [-0.22, 0.05], [-0.18, 0.02],
+      // Lips
+      [-0.20, -0.02], [-0.22, -0.05], [-0.18, -0.08],
+      // Chin
+      [-0.15, -0.15], [-0.12, -0.22], [-0.08, -0.30], [-0.02, -0.38],
+      // Jaw line
+      [0.05, -0.42], [0.15, -0.45], [0.25, -0.46],
+      // Neck
+      [0.10, -0.55], [0.08, -0.65], [0.05, -0.75],
+      // Back of neck
+      [0.20, -0.70], [0.25, -0.60], [0.28, -0.50],
+      // Back of head
+      [0.30, -0.40], [0.35, -0.25], [0.38, -0.10], [0.40, 0.05],
+      [0.42, 0.20], [0.40, 0.35], [0.38, 0.50], [0.35, 0.62],
+      [0.30, 0.72], [0.25, 0.82], [0.20, 0.90],
+      // Ear area
+      [0.32, 0.15], [0.35, 0.10], [0.36, 0.05], [0.35, 0.00], [0.32, -0.05],
+      [0.30, 0.02], [0.28, 0.08],
+      // Earring
+      [0.34, -0.02], [0.36, -0.04],
+    ];
 
-    for (let i = 0; i < particlesCount * 3; i++) {
-      positions[i] = (Math.random() - 0.5) * 20;
-    }
+    // Create glowing blue circle (backdrop)
+    const circleGeometry = new THREE.CircleGeometry(2.2, 64);
+    const circleMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uColor: { value: new THREE.Color(0x0066ff) }
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        uniform vec3 uColor;
+        varying vec2 vUv;
 
-    const particlesGeometry = new THREE.BufferGeometry();
-    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        void main() {
+          vec2 center = vec2(0.5, 0.5);
+          float dist = distance(vUv, center);
 
-    const particlesMaterial = new THREE.PointsMaterial({
-      color: 0xffffff,
-      size: 0.02,
+          // Radial gradient with glow
+          float alpha = smoothstep(0.5, 0.2, dist);
+          float glow = smoothstep(0.5, 0.35, dist) * 0.8;
+
+          // Subtle pulse
+          float pulse = sin(uTime * 0.5) * 0.1 + 0.9;
+
+          vec3 color = uColor * (glow + 0.3) * pulse;
+          gl_FragColor = vec4(color, alpha * 0.9);
+        }
+      `,
       transparent: true,
-      opacity: 0.6,
-      sizeAttenuation: true
+      side: THREE.DoubleSide
     });
 
-    const particles = new THREE.Points(particlesGeometry, particlesMaterial);
+    const circle = new THREE.Mesh(circleGeometry, circleMaterial);
+    circle.position.z = -1;
+    scene.add(circle);
+
+    // Create particles for the profile silhouette
+    const particleCount = 3000;
+    const positions = new Float32Array(particleCount * 3);
+    const originalPositions = new Float32Array(particleCount * 3);
+    const velocities = new Float32Array(particleCount * 3);
+    const sizes = new Float32Array(particleCount);
+
+    // Scale factor for the profile
+    const scale = 2.5;
+
+    // Generate particles along the profile outline and fill
+    for (let i = 0; i < particleCount; i++) {
+      let x, y, z;
+
+      if (i < particleCount * 0.4) {
+        // Particles on the outline
+        const idx = Math.floor(Math.random() * profileOutline.length);
+        const point = profileOutline[idx];
+        x = point[0] * scale + (Math.random() - 0.5) * 0.15;
+        y = point[1] * scale + (Math.random() - 0.5) * 0.15;
+        z = (Math.random() - 0.5) * 0.3;
+      } else if (i < particleCount * 0.7) {
+        // Particles filling the head area
+        const angle = Math.random() * Math.PI * 2;
+        const radius = Math.random() * 0.8;
+        x = (0.1 + Math.cos(angle) * radius * 0.4) * scale;
+        y = (0.3 + Math.sin(angle) * radius * 0.6) * scale;
+        z = (Math.random() - 0.5) * 0.4;
+      } else {
+        // Ambient floating particles
+        x = (Math.random() - 0.5) * 8;
+        y = (Math.random() - 0.5) * 6;
+        z = (Math.random() - 0.5) * 4 - 2;
+      }
+
+      positions[i * 3] = x;
+      positions[i * 3 + 1] = y;
+      positions[i * 3 + 2] = z;
+
+      originalPositions[i * 3] = x;
+      originalPositions[i * 3 + 1] = y;
+      originalPositions[i * 3 + 2] = z;
+
+      velocities[i * 3] = (Math.random() - 0.5) * 0.02;
+      velocities[i * 3 + 1] = (Math.random() - 0.5) * 0.02;
+      velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.02;
+
+      sizes[i] = Math.random() * 0.03 + 0.01;
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+    // Custom shader material for particles
+    const particleMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) }
+      },
+      vertexShader: `
+        attribute float size;
+        uniform float uTime;
+        uniform float uPixelRatio;
+        varying float vAlpha;
+
+        void main() {
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          gl_Position = projectionMatrix * mvPosition;
+
+          // Size attenuation
+          gl_PointSize = size * uPixelRatio * (300.0 / -mvPosition.z);
+
+          // Fade based on distance from center
+          float dist = length(position.xy);
+          vAlpha = smoothstep(4.0, 0.0, dist) * 0.9 + 0.1;
+        }
+      `,
+      fragmentShader: `
+        varying float vAlpha;
+
+        void main() {
+          // Circular point
+          vec2 center = gl_PointCoord - vec2(0.5);
+          float dist = length(center);
+          if (dist > 0.5) discard;
+
+          // Soft edge
+          float alpha = smoothstep(0.5, 0.2, dist) * vAlpha;
+
+          gl_FragColor = vec4(1.0, 1.0, 1.0, alpha);
+        }
+      `,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    });
+
+    const particles = new THREE.Points(geometry, particleMaterial);
     scene.add(particles);
+
+    // Add some ambient particles in the background
+    const bgParticleCount = 500;
+    const bgPositions = new Float32Array(bgParticleCount * 3);
+
+    for (let i = 0; i < bgParticleCount; i++) {
+      bgPositions[i * 3] = (Math.random() - 0.5) * 20;
+      bgPositions[i * 3 + 1] = (Math.random() - 0.5) * 15;
+      bgPositions[i * 3 + 2] = (Math.random() - 0.5) * 10 - 5;
+    }
+
+    const bgGeometry = new THREE.BufferGeometry();
+    bgGeometry.setAttribute('position', new THREE.BufferAttribute(bgPositions, 3));
+
+    const bgMaterial = new THREE.PointsMaterial({
+      color: 0x4488ff,
+      size: 0.02,
+      transparent: true,
+      opacity: 0.4,
+      sizeAttenuation: true,
+      blending: THREE.AdditiveBlending
+    });
+
+    const bgParticles = new THREE.Points(bgGeometry, bgMaterial);
+    scene.add(bgParticles);
 
     camera.position.z = 5;
 
+    // Mouse interaction
+    const mouse = { x: 0, y: 0 };
+
+    window.addEventListener('mousemove', (e) => {
+      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    });
+
     // Animation
+    const clock = new THREE.Clock();
+
     function animate() {
       requestAnimationFrame(animate);
 
-      particles.rotation.y += 0.0005;
-      particles.rotation.x += 0.0002;
+      const time = clock.getElapsedTime();
+
+      // Update uniforms
+      circleMaterial.uniforms.uTime.value = time;
+      particleMaterial.uniforms.uTime.value = time;
+
+      // Animate profile particles (gentle floating)
+      const posArray = geometry.attributes.position.array;
+      for (let i = 0; i < particleCount; i++) {
+        const i3 = i * 3;
+
+        // Gentle oscillation
+        posArray[i3] = originalPositions[i3] + Math.sin(time * 0.5 + i * 0.01) * 0.03;
+        posArray[i3 + 1] = originalPositions[i3 + 1] + Math.cos(time * 0.3 + i * 0.01) * 0.03;
+        posArray[i3 + 2] = originalPositions[i3 + 2] + Math.sin(time * 0.4 + i * 0.02) * 0.02;
+      }
+      geometry.attributes.position.needsUpdate = true;
+
+      // Subtle rotation based on mouse
+      particles.rotation.y = mouse.x * 0.1;
+      particles.rotation.x = mouse.y * 0.05;
+      circle.rotation.y = mouse.x * 0.05;
+      circle.rotation.x = mouse.y * 0.025;
+
+      // Rotate background particles
+      bgParticles.rotation.y += 0.0003;
+      bgParticles.rotation.x += 0.0001;
 
       renderer.render(scene, camera);
     }
@@ -105,6 +308,7 @@
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
+      particleMaterial.uniforms.uPixelRatio.value = Math.min(window.devicePixelRatio, 2);
     });
 
     animate();
