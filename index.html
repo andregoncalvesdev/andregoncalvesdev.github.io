@@ -9,7 +9,7 @@
   <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon/favicon-16x16.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500&display=swap" rel="stylesheet">
   <style>
     * {
       margin: 0;
@@ -20,7 +20,7 @@
     body {
       overflow: hidden;
       background: #000;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: 'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
     canvas {
@@ -40,14 +40,99 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 28px;
+      gap: 32px;
+    }
+
+    .profile-container {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .profile-glow {
+      position: absolute;
+      width: 120%;
+      height: 120%;
+      background: radial-gradient(circle, rgba(0, 100, 255, 0.6) 0%, rgba(0, 60, 200, 0.3) 40%, transparent 70%);
+      border-radius: 50%;
+      filter: blur(30px);
+      animation: morphGlow 8s ease-in-out infinite;
+    }
+
+    .profile-glow::before {
+      content: '';
+      position: absolute;
+      top: -10%;
+      left: -10%;
+      width: 120%;
+      height: 120%;
+      background: radial-gradient(circle at 30% 30%, rgba(0, 150, 255, 0.4) 0%, transparent 50%);
+      border-radius: 50%;
+      animation: morphGlow2 6s ease-in-out infinite reverse;
+    }
+
+    .profile-glow::after {
+      content: '';
+      position: absolute;
+      top: 5%;
+      left: 5%;
+      width: 90%;
+      height: 90%;
+      background: radial-gradient(circle at 70% 70%, rgba(0, 80, 255, 0.5) 0%, transparent 50%);
+      border-radius: 50%;
+      animation: morphGlow3 7s ease-in-out infinite;
+    }
+
+    @keyframes morphGlow {
+      0%, 100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 0.8;
+      }
+      25% {
+        transform: scale(1.1) rotate(5deg);
+        opacity: 1;
+      }
+      50% {
+        transform: scale(1.05) rotate(-3deg);
+        opacity: 0.9;
+      }
+      75% {
+        transform: scale(1.15) rotate(2deg);
+        opacity: 1;
+      }
+    }
+
+    @keyframes morphGlow2 {
+      0%, 100% {
+        transform: scale(1) translate(0, 0);
+      }
+      33% {
+        transform: scale(1.2) translate(5%, -5%);
+      }
+      66% {
+        transform: scale(0.9) translate(-5%, 5%);
+      }
+    }
+
+    @keyframes morphGlow3 {
+      0%, 100% {
+        transform: scale(1) translate(0, 0);
+        opacity: 0.6;
+      }
+      50% {
+        transform: scale(1.3) translate(-3%, 3%);
+        opacity: 0.8;
+      }
     }
 
     .profile-photo {
+      position: relative;
       width: clamp(200px, 35vw, 320px);
       height: auto;
       border-radius: 50%;
       object-fit: cover;
+      z-index: 2;
     }
 
     .info {
@@ -56,23 +141,30 @@
     }
 
     .name {
-      font-size: clamp(1.1rem, 2.5vw, 1.4rem);
-      font-weight: 400;
-      letter-spacing: 0.15em;
-      margin-bottom: 8px;
+      font-size: clamp(1.2rem, 2.8vw, 1.6rem);
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #fff 0%, #a0c4ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
 
     .role {
-      font-size: clamp(0.8rem, 1.5vw, 0.95rem);
+      font-size: clamp(0.85rem, 1.6vw, 1rem);
       font-weight: 300;
-      letter-spacing: 0.08em;
-      opacity: 0.6;
+      letter-spacing: 0.06em;
+      opacity: 0.5;
     }
   </style>
 </head>
 <body>
   <div class="content">
-    <img src="/assets/profile.png" alt="André Gonçalves" class="profile-photo">
+    <div class="profile-container">
+      <div class="profile-glow"></div>
+      <img src="/assets/profile.png" alt="André Gonçalves" class="profile-photo">
+    </div>
     <div class="info">
       <div class="name">André Gonçalves</div>
       <div class="role">Code at Uphold</div>
