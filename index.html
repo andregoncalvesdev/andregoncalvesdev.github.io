@@ -289,32 +289,25 @@
           vec3 viewDir = normalize(vViewPosition);
 
           // Fresnel effect for edge glow
-          float fresnel = pow(1.0 - abs(dot(normal, viewDir)), 2.5);
+          float fresnel = pow(1.0 - abs(dot(normal, viewDir)), 2.0);
 
-          // Dark blue colors matching profile photo
-          vec3 darkBlue = vec3(0.0, 0.1, 0.4);
-          vec3 mediumBlue = vec3(0.0, 0.2, 0.6);
-          vec3 accentBlue = vec3(0.0, 0.35, 0.8);
+          // Dark blue colors matching profile photo - no white
+          vec3 darkBlue = vec3(0.0, 0.08, 0.35);
+          vec3 mediumBlue = vec3(0.0, 0.18, 0.55);
+          vec3 brightBlue = vec3(0.0, 0.3, 0.75);
 
           // Color shifts based on angle and displacement
-          float colorShift = vDisplacement * 1.5 + dot(normal, vec3(0.0, 1.0, 0.0)) * 0.3;
-          colorShift += sin(uTime * 0.5) * 0.15;
+          float colorShift = vDisplacement * 1.2 + dot(normal, vec3(0.0, 1.0, 0.0)) * 0.25;
+          colorShift += sin(uTime * 0.4) * 0.1;
 
-          vec3 baseColor = mix(darkBlue, mediumBlue, smoothstep(-0.5, 0.5, colorShift));
-          baseColor = mix(baseColor, accentBlue, fresnel * 0.4);
+          vec3 baseColor = mix(darkBlue, mediumBlue, smoothstep(-0.4, 0.4, colorShift));
 
-          // Subtle metallic highlights
-          float specular = pow(max(dot(reflect(-viewDir, normal), vec3(0.5, 0.5, 1.0)), 0.0), 64.0);
-          vec3 highlight = vec3(0.3, 0.5, 0.9) * specular * 0.4;
-
-          // Subtle edge glow
-          vec3 edgeGlow = accentBlue * fresnel * 0.5;
-
-          // Combine
-          vec3 finalColor = baseColor + highlight + edgeGlow;
+          // Edge glow - pure blue, no white
+          vec3 edgeColor = mix(mediumBlue, brightBlue, fresnel);
+          vec3 finalColor = mix(baseColor, edgeColor, fresnel * 0.6);
 
           // Alpha for depth
-          float alpha = 0.7 + fresnel * 0.2;
+          float alpha = 0.75 + fresnel * 0.15;
 
           gl_FragColor = vec4(finalColor, alpha);
         }
