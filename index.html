@@ -47,11 +47,27 @@
       justify-content: center;
     }
 
+    /* Subtle dark ring separator between photo and blob */
+    .profile-separator {
+      position: absolute;
+      width: 115%;
+      height: 115%;
+      border-radius: 50%;
+      background: radial-gradient(circle, transparent 45%, rgba(0,0,0,0.6) 55%, rgba(0,0,0,0.8) 65%, transparent 75%);
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0;
+      animation: fadeIn 1.2s ease-out 0.3s forwards;
+    }
+
     .profile-photo {
       position: relative;
       width: clamp(180px, 32vw, 280px);
       height: auto;
       z-index: 2;
+      opacity: 0;
+      transform: scale(0.9);
+      animation: photoEntrance 1s ease-out 0.5s forwards;
     }
 
     .info {
@@ -65,20 +81,62 @@
       letter-spacing: 0.08em;
       margin-bottom: 8px;
       white-space: nowrap;
+      opacity: 0;
+      transform: translateY(10px);
+      animation: textEntrance 0.8s ease-out 1s forwards;
     }
 
     .role {
       font-size: clamp(0.8rem, 1.4vw, 0.9rem);
       font-weight: 400;
       letter-spacing: 0.04em;
-      opacity: 0.5;
+      opacity: 0;
       white-space: nowrap;
+      transform: translateY(10px);
+      animation: textEntrance 0.8s ease-out 1.2s forwards;
+    }
+
+    .role-final {
+      opacity: 0.5;
+    }
+
+    @keyframes fadeIn {
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes photoEntrance {
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    @keyframes textEntrance {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Role needs to end at 0.5 opacity */
+    .role {
+      animation: roleEntrance 0.8s ease-out 1.2s forwards;
+    }
+
+    @keyframes roleEntrance {
+      to {
+        opacity: 0.5;
+        transform: translateY(0);
+      }
     }
   </style>
 </head>
 <body>
   <div class="content">
     <div class="profile-container">
+      <div class="profile-separator"></div>
       <img src="/assets/profile.png" alt="André Gonçalves" class="profile-photo">
     </div>
     <div class="info">
