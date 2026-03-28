@@ -8,16 +8,18 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon/favicon-16x16.png">
   <style>
-    * {
+    *, *::before, *::after {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
 
-    body {
+    html, body {
+      width: 100%;
+      height: 100%;
       overflow: hidden;
-      background: #000;
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+      background: #020b18;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
     }
 
     canvas {
@@ -25,463 +27,450 @@
       position: fixed;
       top: 0;
       left: 0;
+      width: 100%;
+      height: 100%;
       z-index: 0;
     }
 
+    /* Bottom gradient for text readability */
+    .gradient-overlay {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 60vh;
+      background: linear-gradient(
+        to top,
+        rgba(2, 11, 24, 1) 0%,
+        rgba(2, 11, 24, 0.85) 35%,
+        rgba(2, 11, 24, 0) 100%
+      );
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* Top vignette */
+    .top-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 20vh;
+      background: linear-gradient(to bottom, rgba(2, 11, 24, 0.6) 0%, transparent 100%);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* Main content — bottom-left aligned */
     .content {
       position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 10;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 28px;
-    }
-
-    .profile-container {
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .profile-photo {
-      position: relative;
-      width: clamp(180px, 32vw, 280px);
-      height: auto;
+      bottom: 0;
+      left: 0;
+      right: 0;
       z-index: 2;
+      padding: clamp(2rem, 5vw, 5rem);
+    }
+
+    .label {
+      font-size: clamp(0.65rem, 1.1vw, 0.8rem);
+      font-weight: 500;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: rgba(0, 200, 255, 0.65);
       opacity: 0;
-      transform: scale(0.85);
-    }
-
-    .profile-photo.animate {
-      animation: photoEntrance 1s ease-out forwards;
-    }
-
-    .info {
-      text-align: center;
-      color: #fff;
+      transform: translateY(12px);
+      transition: opacity 0.9s ease, transform 0.9s ease;
+      margin-bottom: 0.6rem;
     }
 
     .name {
-      font-size: clamp(1rem, 2.2vw, 1.3rem);
-      font-weight: 500;
-      letter-spacing: 0.08em;
-      margin-bottom: 8px;
-      white-space: nowrap;
+      font-size: clamp(3.2rem, 8.5vw, 8rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 0.88;
+      color: #ffffff;
       opacity: 0;
-      transform: translateY(15px);
-    }
-
-    .name.animate {
-      animation: textEntrance 0.8s ease-out forwards;
+      transform: translateY(24px);
+      transition: opacity 1.1s ease 0.25s, transform 1.1s ease 0.25s;
+      margin-bottom: 1rem;
     }
 
     .role {
-      font-size: clamp(0.8rem, 1.4vw, 0.9rem);
+      font-size: clamp(0.85rem, 1.6vw, 1.15rem);
       font-weight: 400;
-      letter-spacing: 0.04em;
-      white-space: nowrap;
+      letter-spacing: 0.06em;
+      color: rgba(255, 255, 255, 0.4);
       opacity: 0;
-      transform: translateY(15px);
+      transform: translateY(12px);
+      transition: opacity 0.9s ease 0.55s, transform 0.9s ease 0.55s;
+      margin-bottom: 1.75rem;
     }
 
-    .role.animate {
-      animation: roleEntrance 0.8s ease-out forwards;
+    .links {
+      display: flex;
+      gap: 2.25rem;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 0.9s ease 0.85s, transform 0.9s ease 0.85s;
     }
 
-    @keyframes photoEntrance {
-      0% {
-        opacity: 0;
-        transform: scale(0.85);
-      }
-      100% {
-        opacity: 1;
-        transform: scale(1);
-      }
+    .link {
+      font-size: clamp(0.7rem, 1vw, 0.8rem);
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.35);
+      text-decoration: none;
+      position: relative;
+      padding-bottom: 4px;
+      transition: color 0.3s ease;
     }
 
-    @keyframes textEntrance {
-      0% {
-        opacity: 0;
-        transform: translateY(15px);
-      }
-      100% {
-        opacity: 1;
-        transform: translateY(0);
-      }
+    .link::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 0;
+      height: 1px;
+      background: rgba(0, 200, 255, 0.75);
+      transition: width 0.35s ease;
     }
 
-    @keyframes roleEntrance {
-      0% {
-        opacity: 0;
-        transform: translateY(15px);
-      }
-      100% {
-        opacity: 0.5;
-        transform: translateY(0);
-      }
+    .link:hover {
+      color: rgba(0, 210, 255, 0.95);
+    }
+
+    .link:hover::after {
+      width: 100%;
+    }
+
+    /* Decorative vertical line + text — bottom right */
+    .corner-hint {
+      position: fixed;
+      bottom: clamp(2rem, 5vw, 5rem);
+      right: clamp(2rem, 5vw, 5rem);
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.6rem;
+      opacity: 0;
+      transition: opacity 1.2s ease 1.4s;
+    }
+
+    .corner-hint span {
+      font-size: 0.6rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.25);
+      writing-mode: vertical-rl;
+    }
+
+    .corner-line {
+      width: 1px;
+      height: 48px;
+      background: linear-gradient(to bottom, transparent, rgba(0, 180, 220, 0.4));
+      animation: linePulse 2.5s ease-in-out infinite;
+    }
+
+    @keyframes linePulse {
+      0%, 100% { opacity: 0.3; transform: scaleY(1); }
+      50%       { opacity: 0.8; transform: scaleY(1.25); }
+    }
+
+    .visible {
+      opacity: 1 !important;
+      transform: translateY(0) !important;
     }
   </style>
 </head>
 <body>
+  <canvas id="canvas"></canvas>
+  <div class="top-overlay"></div>
+  <div class="gradient-overlay"></div>
+
   <div class="content">
-    <div class="profile-container">
-      <img src="/assets/profile.png" alt="André Gonçalves" class="profile-photo">
-    </div>
-    <div class="info">
-      <div class="name">André Gonçalves</div>
-      <div class="role">Code at Uphold</div>
-    </div>
+    <div class="label" id="label">Portfolio · 2024</div>
+    <h1 class="name" id="name">André<br>Gonçalves</h1>
+    <p class="role" id="role">Software Engineer &nbsp;·&nbsp; Uphold</p>
+    <nav class="links" id="links">
+      <a href="https://github.com/andregoncalvesdev" class="link" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://linkedin.com/in/andregoncalvesdev" class="link" target="_blank" rel="noopener">LinkedIn</a>
+      <a href="mailto:andregoncalvesdev@gmail.com" class="link">Contact</a>
+    </nav>
   </div>
 
-  <script>
-    // Trigger entrance animations with staggered timing
-    window.addEventListener('load', function() {
-      setTimeout(function() {
-        document.querySelector('.profile-photo').classList.add('animate');
-      }, 300);
-
-      setTimeout(function() {
-        document.querySelector('.name').classList.add('animate');
-      }, 800);
-
-      setTimeout(function() {
-        document.querySelector('.role').classList.add('animate');
-      }, 1000);
-    });
-  </script>
+  <div class="corner-hint" id="cornerHint">
+    <span>Scroll</span>
+    <div class="corner-line"></div>
+  </div>
 
   <script type="importmap">
-    {
-      "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
-      }
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
     }
+  }
   </script>
 
   <script type="module">
     import * as THREE from 'three';
 
-    // Scene setup
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-
+    // ── Renderer ──────────────────────────────────────────────────────────
+    const canvas = document.getElementById('canvas');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+    const dpr = Math.min(window.devicePixelRatio, 2);
+    renderer.setPixelRatio(dpr);
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setClearColor(0x000000, 1);
-    document.body.appendChild(renderer.domElement);
+    renderer.setClearColor(0x020b18, 1);
 
-    // Stars / Galaxy particles
-    const starsCount = 3000;
-    const starsPositions = new Float32Array(starsCount * 3);
-    const starsSizes = new Float32Array(starsCount);
+    // ── Scene & Camera ────────────────────────────────────────────────────
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x020b18, 0.026);
 
-    for (let i = 0; i < starsCount; i++) {
-      const i3 = i * 3;
-      const radius = Math.random() * 100 + 20;
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos((Math.random() * 2) - 1);
+    const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 11, 28);
+    camera.lookAt(0, -3, 0);
 
-      starsPositions[i3] = radius * Math.sin(phi) * Math.cos(theta);
-      starsPositions[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
-      starsPositions[i3 + 2] = radius * Math.cos(phi) - 50;
+    // ── Mouse / Touch ─────────────────────────────────────────────────────
+    const mouse       = new THREE.Vector2(0, 0);
+    const targetMouse = new THREE.Vector2(0, 0);
 
-      starsSizes[i] = Math.random() * 1.5 + 0.5;
+    window.addEventListener('mousemove', e => {
+      targetMouse.x =  (e.clientX / window.innerWidth  - 0.5) * 2;
+      targetMouse.y = -(e.clientY / window.innerHeight - 0.5) * 2;
+    });
+
+    window.addEventListener('touchmove', e => {
+      if (e.touches.length > 0) {
+        targetMouse.x =  (e.touches[0].clientX / window.innerWidth  - 0.5) * 2;
+        targetMouse.y = -(e.touches[0].clientY / window.innerHeight - 0.5) * 2;
+      }
+    }, { passive: true });
+
+    // ── Ocean particle grid ───────────────────────────────────────────────
+    const GRID   = 160;
+    const SPREAD = 64.0;
+    const count  = GRID * GRID;
+
+    const positions = new Float32Array(count * 3);
+    const randoms   = new Float32Array(count);
+
+    for (let ix = 0; ix < GRID; ix++) {
+      for (let iz = 0; iz < GRID; iz++) {
+        const i = ix * GRID + iz;
+        positions[i * 3 + 0] = (ix / (GRID - 1) - 0.5) * SPREAD;
+        positions[i * 3 + 1] = 0;
+        positions[i * 3 + 2] = (iz / (GRID - 1) - 0.5) * SPREAD;
+        randoms[i] = Math.random();
+      }
     }
 
-    const starsGeometry = new THREE.BufferGeometry();
-    starsGeometry.setAttribute('position', new THREE.BufferAttribute(starsPositions, 3));
-    starsGeometry.setAttribute('size', new THREE.BufferAttribute(starsSizes, 1));
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('aRandom',  new THREE.BufferAttribute(randoms,   1));
 
-    const starsMaterial = new THREE.ShaderMaterial({
+    // ── Vertex Shader ─────────────────────────────────────────────────────
+    const vertexShader = /* glsl */`
+      uniform float uTime;
+      uniform vec2  uMouse;
+      uniform float uPixelRatio;
+
+      attribute float aRandom;
+
+      varying float vElevation;
+      varying float vEdgeFade;
+
+      // Gerstner wave — returns XYZ displacement
+      vec3 gerstner(vec2 pos, vec2 dir, float steepness, float wl, float spd) {
+        float k = 6.28318 / wl;
+        float c = sqrt(9.81 / k) * spd;
+        float f = k * dot(normalize(dir), pos) - c * uTime;
+        float a = steepness / k;
+        return vec3(dir.x * a * cos(f), a * sin(f), dir.y * a * cos(f));
+      }
+
+      void main() {
+        vec3 pos = position;
+
+        // Six layered waves — vary direction, steepness, wavelength & speed
+        vec3 w  = gerstner(pos.xz, vec2( 1.00,  0.30), 0.55, 12.0, 0.40);
+            w += gerstner(pos.xz, vec2(-0.60,  1.00), 0.45,  8.0, 0.55);
+            w += gerstner(pos.xz, vec2( 0.40, -0.80), 0.35,  5.5, 0.70);
+            w += gerstner(pos.xz, vec2( 0.80,  0.60), 0.25,  3.5, 0.90);
+            w += gerstner(pos.xz, vec2(-0.30, -0.50), 0.18,  2.2, 1.20);
+            w += gerstner(pos.xz, vec2( 0.70, -0.20), 0.10,  1.4, 1.60);
+
+        pos += w;
+
+        // Mouse-driven ripple
+        vec2  mWorld = uMouse * 18.0;
+        float mDist  = distance(pos.xz, mWorld);
+        pos.y += sin(mDist * 1.3 - uTime * 4.5) * exp(-mDist * 0.20) * 2.2;
+
+        vElevation = pos.y;
+
+        // Fade particles near grid boundary
+        float edge = length(position.xz) / (${SPREAD.toFixed(1)} * 0.5);
+        vEdgeFade  = 1.0 - smoothstep(0.52, 1.0, edge);
+
+        vec4 mvPos   = modelViewMatrix * vec4(pos, 1.0);
+        gl_Position  = projectionMatrix * mvPos;
+
+        // Point size: bigger at wave peaks & for random "sparkle" particles
+        float sz = (1.8 + aRandom * 2.8 + max(0.0, vElevation) * 0.9) * uPixelRatio;
+        gl_PointSize = clamp(sz * 20.0 / -mvPos.z, 1.0, 16.0);
+      }
+    `;
+
+    // ── Fragment Shader ───────────────────────────────────────────────────
+    const fragmentShader = /* glsl */`
+      varying float vElevation;
+      varying float vEdgeFade;
+
+      void main() {
+        vec2  uv = gl_PointCoord - 0.5;
+        float d  = length(uv);
+        if (d > 0.5) discard;
+
+        // Map elevation to [0,1]
+        float t = clamp(vElevation * 0.32 + 0.48, 0.0, 1.0);
+
+        // Ocean colour ramp: deep navy → mid blue → cyan → near-white foam
+        vec3 deep  = vec3(0.00, 0.04, 0.20);
+        vec3 mid   = vec3(0.00, 0.22, 0.55);
+        vec3 surf  = vec3(0.00, 0.62, 0.88);
+        vec3 foam  = vec3(0.78, 0.96, 1.00);
+
+        vec3 col;
+        if      (t < 0.42) col = mix(deep, mid,  t / 0.42);
+        else if (t < 0.78) col = mix(mid,  surf, (t - 0.42) / 0.36);
+        else               col = mix(surf, foam, (t - 0.78) / 0.22);
+
+        // Soft circular disc with edge fade
+        float alpha = pow((0.5 - d) / 0.5, 1.5);
+        alpha *= vEdgeFade;
+        alpha *= 0.82 + t * 0.18;   // peaks slightly brighter
+
+        gl_FragColor = vec4(col, alpha);
+      }
+    `;
+
+    const mat = new THREE.ShaderMaterial({
+      vertexShader,
+      fragmentShader,
       uniforms: {
-        uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
-        uTime: { value: 0 }
+        uTime:       { value: 0 },
+        uMouse:      { value: new THREE.Vector2() },
+        uPixelRatio: { value: dpr },
       },
-      vertexShader: `
+      transparent: true,
+      depthWrite:  false,
+      blending:    THREE.AdditiveBlending,
+    });
+
+    scene.add(new THREE.Points(geo, mat));
+
+    // ── Background star field ─────────────────────────────────────────────
+    const STARS    = 2000;
+    const starPos  = new Float32Array(STARS * 3);
+    const starSize = new Float32Array(STARS);
+
+    for (let i = 0; i < STARS; i++) {
+      const r  = Math.random() * 200 + 60;
+      const th = Math.random() * Math.PI * 2;
+      const ph = Math.acos(Math.random() * 2 - 1);
+      starPos[i*3]   = r * Math.sin(ph) * Math.cos(th);
+      starPos[i*3+1] = r * Math.sin(ph) * Math.sin(th) + 50;
+      starPos[i*3+2] = r * Math.cos(ph) - 70;
+      starSize[i] = Math.random() * 1.2 + 0.3;
+    }
+
+    const starGeo = new THREE.BufferGeometry();
+    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos,  3));
+    starGeo.setAttribute('size',     new THREE.BufferAttribute(starSize, 1));
+
+    const starMat = new THREE.ShaderMaterial({
+      uniforms: { uTime: { value: 0 }, uDPR: { value: dpr } },
+      vertexShader: /* glsl */`
         attribute float size;
-        uniform float uPixelRatio;
         uniform float uTime;
+        uniform float uDPR;
         varying float vAlpha;
-
         void main() {
-          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          gl_Position = projectionMatrix * mvPosition;
-          gl_PointSize = size * uPixelRatio * (100.0 / -mvPosition.z);
-
-          float twinkle = sin(uTime * 2.0 + position.x * 0.5 + position.y * 0.3) * 0.3 + 0.7;
-          vAlpha = twinkle * smoothstep(150.0, 20.0, -mvPosition.z);
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          gl_Position  = projectionMatrix * mv;
+          float twinkle = sin(uTime * 1.8 + position.x * 0.4 + position.z * 0.3) * 0.35 + 0.65;
+          vAlpha = twinkle * smoothstep(200.0, 40.0, -mv.z);
+          gl_PointSize = size * uDPR * (120.0 / -mv.z);
         }
       `,
-      fragmentShader: `
+      fragmentShader: /* glsl */`
         varying float vAlpha;
-
         void main() {
-          vec2 center = gl_PointCoord - vec2(0.5);
-          float dist = length(center);
-          if (dist > 0.5) discard;
-
-          float alpha = smoothstep(0.5, 0.0, dist) * vAlpha;
-          gl_FragColor = vec4(1.0, 1.0, 1.0, alpha);
+          float d = length(gl_PointCoord - 0.5);
+          if (d > 0.5) discard;
+          float a = smoothstep(0.5, 0.0, d) * vAlpha;
+          gl_FragColor = vec4(0.7, 0.88, 1.0, a);
         }
       `,
       transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending
+      depthWrite:  false,
+      blending:    THREE.AdditiveBlending,
     });
 
-    const stars = new THREE.Points(starsGeometry, starsMaterial);
+    const stars = new THREE.Points(starGeo, starMat);
     scene.add(stars);
 
-    // Morphing metallic blob
-    const blobGeometry = new THREE.IcosahedronGeometry(2.3, 64);
-
-    const blobMaterial = new THREE.ShaderMaterial({
-      uniforms: {
-        uTime: { value: 0 },
-        uMouse: { value: new THREE.Vector2(0, 0) }
-      },
-      vertexShader: `
-        uniform float uTime;
-        uniform vec2 uMouse;
-
-        varying vec3 vNormal;
-        varying vec3 vPosition;
-        varying float vDisplacement;
-        varying vec3 vViewPosition;
-
-        // Simplex 3D noise
-        vec4 permute(vec4 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
-        vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
-
-        float snoise(vec3 v) {
-          const vec2 C = vec2(1.0/6.0, 1.0/3.0);
-          const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
-
-          vec3 i  = floor(v + dot(v, C.yyy));
-          vec3 x0 = v - i + dot(i, C.xxx);
-
-          vec3 g = step(x0.yzx, x0.xyz);
-          vec3 l = 1.0 - g;
-          vec3 i1 = min(g.xyz, l.zxy);
-          vec3 i2 = max(g.xyz, l.zxy);
-
-          vec3 x1 = x0 - i1 + C.xxx;
-          vec3 x2 = x0 - i2 + C.yyy;
-          vec3 x3 = x0 - D.yyy;
-
-          i = mod(i, 289.0);
-          vec4 p = permute(permute(permute(
-                    i.z + vec4(0.0, i1.z, i2.z, 1.0))
-                  + i.y + vec4(0.0, i1.y, i2.y, 1.0))
-                  + i.x + vec4(0.0, i1.x, i2.x, 1.0));
-
-          float n_ = 1.0/7.0;
-          vec3 ns = n_ * D.wyz - D.xzx;
-
-          vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
-
-          vec4 x_ = floor(j * ns.z);
-          vec4 y_ = floor(j - 7.0 * x_);
-
-          vec4 x = x_ *ns.x + ns.yyyy;
-          vec4 y = y_ *ns.x + ns.yyyy;
-          vec4 h = 1.0 - abs(x) - abs(y);
-
-          vec4 b0 = vec4(x.xy, y.xy);
-          vec4 b1 = vec4(x.zw, y.zw);
-
-          vec4 s0 = floor(b0)*2.0 + 1.0;
-          vec4 s1 = floor(b1)*2.0 + 1.0;
-          vec4 sh = -step(h, vec4(0.0));
-
-          vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
-          vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
-
-          vec3 p0 = vec3(a0.xy, h.x);
-          vec3 p1 = vec3(a0.zw, h.y);
-          vec3 p2 = vec3(a1.xy, h.z);
-          vec3 p3 = vec3(a1.zw, h.w);
-
-          vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
-          p0 *= norm.x;
-          p1 *= norm.y;
-          p2 *= norm.z;
-          p3 *= norm.w;
-
-          vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
-          m = m * m;
-          return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
-        }
-
-        void main() {
-          vNormal = normal;
-          vPosition = position;
-
-          // Multi-layered noise for organic morphing
-          float slowTime = uTime * 0.3;
-          float noise1 = snoise(position * 0.8 + slowTime);
-          float noise2 = snoise(position * 1.6 + slowTime * 1.3);
-          float noise3 = snoise(position * 0.4 + slowTime * 0.7);
-
-          // Mouse influence
-          float mouseInfluence = (uMouse.x * position.x + uMouse.y * position.y) * 0.1;
-
-          // Combined displacement
-          float displacement = noise1 * 0.4 + noise2 * 0.2 + noise3 * 0.3 + mouseInfluence;
-          vDisplacement = displacement;
-
-          // Apply displacement
-          vec3 newPosition = position + normal * displacement * 0.5;
-
-          vec4 mvPosition = modelViewMatrix * vec4(newPosition, 1.0);
-          vViewPosition = -mvPosition.xyz;
-          gl_Position = projectionMatrix * mvPosition;
-        }
-      `,
-      fragmentShader: `
-        uniform float uTime;
-
-        varying vec3 vNormal;
-        varying vec3 vPosition;
-        varying float vDisplacement;
-        varying vec3 vViewPosition;
-
-        void main() {
-          vec3 normal = normalize(vNormal);
-          vec3 viewDir = normalize(vViewPosition);
-
-          // Fresnel effect for edge glow
-          float fresnel = pow(1.0 - abs(dot(normal, viewDir)), 2.0);
-
-          // Dark blue colors matching profile photo - no white
-          vec3 darkBlue = vec3(0.0, 0.08, 0.35);
-          vec3 mediumBlue = vec3(0.0, 0.18, 0.55);
-          vec3 brightBlue = vec3(0.0, 0.3, 0.75);
-
-          // Color shifts based on angle and displacement
-          float colorShift = vDisplacement * 1.2 + dot(normal, vec3(0.0, 1.0, 0.0)) * 0.25;
-          colorShift += sin(uTime * 0.4) * 0.1;
-
-          vec3 baseColor = mix(darkBlue, mediumBlue, smoothstep(-0.4, 0.4, colorShift));
-
-          // Edge glow - pure blue, no white
-          vec3 edgeColor = mix(mediumBlue, brightBlue, fresnel);
-          vec3 finalColor = mix(baseColor, edgeColor, fresnel * 0.6);
-
-          // Alpha for depth
-          float alpha = 0.75 + fresnel * 0.15;
-
-          gl_FragColor = vec4(finalColor, alpha);
-        }
-      `,
-      transparent: true,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-      blending: THREE.NormalBlending
-    });
-
-    const blob = new THREE.Mesh(blobGeometry, blobMaterial);
-    blob.position.z = 20; // In front of stars, behind HTML content
-    scene.add(blob);
-
-    // Inner glow sphere
-    const innerGlowGeometry = new THREE.SphereGeometry(1.8, 32, 32);
-    const innerGlowMaterial = new THREE.ShaderMaterial({
-      uniforms: {
-        uTime: { value: 0 }
-      },
-      vertexShader: `
-        varying vec3 vNormal;
-        void main() {
-          vNormal = normal;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        uniform float uTime;
-        varying vec3 vNormal;
-
-        void main() {
-          float intensity = pow(0.6 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);
-          vec3 color = vec3(0.0, 0.15, 0.5) * intensity;
-          float pulse = sin(uTime * 0.8) * 0.1 + 0.9;
-          gl_FragColor = vec4(color * pulse, intensity * 0.3);
-        }
-      `,
-      transparent: true,
-      side: THREE.BackSide,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false
-    });
-
-    const innerGlow = new THREE.Mesh(innerGlowGeometry, innerGlowMaterial);
-    innerGlow.position.z = 20;
-    scene.add(innerGlow);
-
-    camera.position.z = 30;
-
-    // Mouse interaction
-    const mouse = { x: 0, y: 0, targetX: 0, targetY: 0 };
-
-    window.addEventListener('mousemove', (e) => {
-      mouse.targetX = (e.clientX / window.innerWidth) * 2 - 1;
-      mouse.targetY = -(e.clientY / window.innerHeight) * 2 + 1;
-    });
-
-    window.addEventListener('touchmove', (e) => {
-      if (e.touches.length > 0) {
-        mouse.targetX = (e.touches[0].clientX / window.innerWidth) * 2 - 1;
-        mouse.targetY = -(e.touches[0].clientY / window.innerHeight) * 2 + 1;
-      }
-    });
-
-    // Animation
+    // ── Animation loop ────────────────────────────────────────────────────
     const clock = new THREE.Clock();
 
     function animate() {
       requestAnimationFrame(animate);
+      const t = clock.getElapsedTime();
 
-      const time = clock.getElapsedTime();
+      // Smooth mouse lag
+      mouse.x += (targetMouse.x - mouse.x) * 0.04;
+      mouse.y += (targetMouse.y - mouse.y) * 0.04;
 
-      // Smooth mouse following
-      mouse.x += (mouse.targetX - mouse.x) * 0.05;
-      mouse.y += (mouse.targetY - mouse.y) * 0.05;
+      mat.uniforms.uTime.value       = t;
+      mat.uniforms.uMouse.value.copy(mouse);
+      starMat.uniforms.uTime.value   = t;
 
-      // Update uniforms
-      starsMaterial.uniforms.uTime.value = time;
-      blobMaterial.uniforms.uTime.value = time;
-      blobMaterial.uniforms.uMouse.value.set(mouse.x, mouse.y);
-      innerGlowMaterial.uniforms.uTime.value = time;
+      // Parallax camera drift
+      camera.position.x = mouse.x * 3.5;
+      camera.position.y = 11 + mouse.y * 2;
+      camera.lookAt(0, -3 + mouse.y * 0.6, 0);
 
-      // Rotate blob slowly
-      blob.rotation.x = time * 0.1 + mouse.y * 0.3;
-      blob.rotation.y = time * 0.15 + mouse.x * 0.3;
-      innerGlow.rotation.x = blob.rotation.x;
-      innerGlow.rotation.y = blob.rotation.y;
-
-      // Stars movement
-      stars.rotation.y += 0.0001;
-      stars.rotation.x += 0.00005;
-      stars.position.x = mouse.x * 2;
-      stars.position.y = mouse.y * 1;
+      // Stars drift slowly
+      stars.rotation.y += 0.00008;
 
       renderer.render(scene, camera);
     }
 
-    // Handle resize
+    animate();
+
+    // ── Resize ────────────────────────────────────────────────────────────
     window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
+      const w = window.innerWidth, h = window.innerHeight;
+      camera.aspect = w / h;
       camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      starsMaterial.uniforms.uPixelRatio.value = Math.min(window.devicePixelRatio, 2);
+      renderer.setSize(w, h);
+      const d = Math.min(window.devicePixelRatio, 2);
+      mat.uniforms.uPixelRatio.value = d;
+      starMat.uniforms.uDPR.value    = d;
     });
 
-    animate();
+    // ── Entrance animations ───────────────────────────────────────────────
+    const show = (id, delay) =>
+      setTimeout(() => document.getElementById(id)?.classList.add('visible'), delay);
+
+    show('label',      700);
+    show('name',      1000);
+    show('role',      1450);
+    show('links',     1850);
+    show('cornerHint',2300);
   </script>
 </body>
 </html>
