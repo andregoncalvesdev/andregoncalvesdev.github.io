@@ -71,18 +71,6 @@
       padding: clamp(2rem, 5vw, 5rem);
     }
 
-    .label {
-      font-size: clamp(0.65rem, 1.1vw, 0.8rem);
-      font-weight: 500;
-      letter-spacing: 0.3em;
-      text-transform: uppercase;
-      color: rgba(0, 200, 255, 0.65);
-      opacity: 0;
-      transform: translateY(12px);
-      transition: opacity 0.9s ease, transform 0.9s ease;
-      margin-bottom: 0.6rem;
-    }
-
     .name {
       font-size: clamp(3.2rem, 8.5vw, 8rem);
       font-weight: 800;
@@ -145,40 +133,6 @@
       width: 100%;
     }
 
-    /* Decorative vertical line + text — bottom right */
-    .corner-hint {
-      position: fixed;
-      bottom: clamp(2rem, 5vw, 5rem);
-      right: clamp(2rem, 5vw, 5rem);
-      z-index: 2;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.6rem;
-      opacity: 0;
-      transition: opacity 1.2s ease 1.4s;
-    }
-
-    .corner-hint span {
-      font-size: 0.6rem;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: rgba(255, 255, 255, 0.25);
-      writing-mode: vertical-rl;
-    }
-
-    .corner-line {
-      width: 1px;
-      height: 48px;
-      background: linear-gradient(to bottom, transparent, rgba(0, 180, 220, 0.4));
-      animation: linePulse 2.5s ease-in-out infinite;
-    }
-
-    @keyframes linePulse {
-      0%, 100% { opacity: 0.3; transform: scaleY(1); }
-      50%       { opacity: 0.8; transform: scaleY(1.25); }
-    }
-
     .visible {
       opacity: 1 !important;
       transform: translateY(0) !important;
@@ -191,7 +145,6 @@
   <div class="gradient-overlay"></div>
 
   <div class="content">
-    <div class="label" id="label">Portfolio · 2024</div>
     <h1 class="name" id="name">André<br>Gonçalves</h1>
     <p class="role" id="role">Software Engineer &nbsp;·&nbsp; Uphold</p>
     <nav class="links" id="links">
@@ -199,11 +152,6 @@
       <a href="https://linkedin.com/in/andregoncalvesdev" class="link" target="_blank" rel="noopener">LinkedIn</a>
       <a href="mailto:andregoncalvesdev@gmail.com" class="link">Contact</a>
     </nav>
-  </div>
-
-  <div class="corner-hint" id="cornerHint">
-    <span>Scroll</span>
-    <div class="corner-line"></div>
   </div>
 
   <script type="importmap">
@@ -466,11 +414,9 @@
     const show = (id, delay) =>
       setTimeout(() => document.getElementById(id)?.classList.add('visible'), delay);
 
-    show('label',      700);
-    show('name',      1000);
-    show('role',      1450);
-    show('links',     1850);
-    show('cornerHint',2300);
+    show('name',  700);
+    show('role',  1150);
+    show('links', 1550);
   </script>
 </body>
 </html>
