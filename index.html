@@ -727,6 +727,99 @@
     dust.frustumCulled = false;
     scene.add(dust);
 
+    // ── Comets streaking behind the sphere ────────────────────────────────
+    const cometMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uAlpha:  { value: 0 },
+        uSphere: { value: new THREE.Vector3() },
+      },
+      vertexShader: /* glsl */`
+        varying vec2 vUv;
+        void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+      `,
+      fragmentShader: /* glsl */`
+        uniform float uAlpha;
+        uniform vec3  uSphere; // screen centre (px) and radius (px)
+        varying vec2 vUv;
+        void main() {
+          float across = 1.0 - abs(vUv.y - 0.5) * 2.0;
+          float tail = pow(vUv.x, 2.6) * across * across;
+          float head = smoothstep(0.9, 1.0, vUv.x) * across;
+          vec3 col = mix(vec3(0.08, 0.28, 1.0), vec3(0.62, 0.74, 1.0), pow(vUv.x, 4.0));
+          // Dim where the sphere sits in front
+          float d = distance(gl_FragCoord.xy, uSphere.xy);
+          float occ = mix(0.15, 1.0, smoothstep(uSphere.z * 0.9, uSphere.z * 1.04, d));
+          gl_FragColor = vec4(col * (tail + head * 0.7) * uAlpha * occ, 1.0);
+        }
+      `,
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      blending: THREE.AdditiveBlending,
+    });
+
+    const cometGeo = new THREE.PlaneGeometry(1, 1);
+    const comets = Array.from({ length: 3 }, () => {
+      const mesh = new THREE.Mesh(cometGeo, cometMat.clone());
+      mesh.visible = false;
+      mesh.frustumCulled = false;
+      scene.add(mesh);
+      return { mesh, age: 0, life: 0, length: 0, dir: new THREE.Vector2(), head: new THREE.Vector3() };
+    });
+
+    let nextComet = 1.5;
+    const cometTanHalf = () => Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+
+    function spawnComet() {
+      const c = comets.find(c => !c.mesh.visible);
+      if (!c) return;
+      const z = -9 - Math.random() * 7;
+      const halfH = (camera.position.z - z) * cometTanHalf();
+      const halfW = halfH * camera.aspect;
+      const side = Math.random() < 0.5 ? 1 : -1;
+      const angle = THREE.MathUtils.degToRad(18 + Math.random() * 22);
+      c.dir.set(Math.cos(angle) * side, -Math.sin(angle));
+      c.head.set(-side * halfW * (0.25 + Math.random() * 0.75), groupY + halfH * (0.2 + Math.random() * 0.8), z);
+      c.speed = 9 + Math.random() * 7;
+      c.length = 3.2 + Math.random() * 3.2;
+      c.width = 0.05 + Math.random() * 0.03;
+      c.life = 1.5 + Math.random() * 1.0;
+      c.age = 0;
+      c.mesh.rotation.z = Math.atan2(c.dir.y, c.dir.x);
+      c.mesh.scale.set(c.length, c.width, 1);
+      c.mesh.visible = true;
+    }
+
+    const sphereScreen = new THREE.Vector3();
+    function updateComets(dt, enabled) {
+      if (enabled) {
+        nextComet -= dt;
+        if (nextComet <= 0) {
+          spawnComet();
+          nextComet = 1.8 + Math.random() * 3.4;
+        }
+      }
+
+      // Sphere footprint on screen, in drawing-buffer pixels
+      const bw = renderer.domElement.width, bh = renderer.domElement.height;
+      sphereScreen.set(0, groupY, 0).project(camera);
+      const camDist = camera.position.distanceTo(camLook);
+      const radiusPx = SPHERE_R / (camDist * cometTanHalf()) * bh / 2;
+
+      for (const c of comets) {
+        if (!c.mesh.visible) continue;
+        c.age += dt;
+        const p = c.age / c.life;
+        if (p >= 1) { c.mesh.visible = false; continue; }
+        c.head.x += c.dir.x * c.speed * dt;
+        c.head.y += c.dir.y * c.speed * dt;
+        c.mesh.position.set(c.head.x - c.dir.x * c.length / 2, c.head.y - c.dir.y * c.length / 2, c.head.z);
+        const u = c.mesh.material.uniforms;
+        u.uAlpha.value = Math.min(c.age / 0.25, 1) * (1 - THREE.MathUtils.smoothstep(p, 0.55, 1)) * 1.25;
+        u.uSphere.value.set((sphereScreen.x * 0.5 + 0.5) * bw, (sphereScreen.y * 0.5 + 0.5) * bh, radiusPx);
+      }
+    }
+
     // ── Post-processing ───────────────────────────────────────────────────
     const composer = new EffectComposer(renderer);
     composer.setPixelRatio(dpr);
@@ -928,6 +1021,7 @@
       finalPass.uniforms.uAberration.value = (1 - settle) * 0.008 * (intro > 0 ? 1 : 0);
       finalPass.uniforms.uGlow.value = clamp01(intro / 2.5) * (1 + burst * 0.3);
 
+      updateComets(dt, introDone && !reduceMotion);
       updateTrail(dt);
       composer.render();
     }
