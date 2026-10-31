@@ -2,399 +2,1177 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>André Gonçalves</title>
+  <meta name="description" content="André Gonçalves — Code at Uphold">
+  <meta name="theme-color" content="#00000f">
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon/apple-icon-180x180.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon/favicon-16x16.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <link rel="preload" as="image" href="/assets/profile.png">
   <style>
-    *, *::before, *::after {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+    :root {
+      --bg: #00000f;
+      --ink: #f2f5ff;
+      --dim: rgba(220, 228, 255, 0.46);
+      --blue: #1f4bff;
+      --gutter: clamp(16px, 2.6vw, 44px);
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --burst: 0;
     }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
     html, body {
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #00000f;
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    canvas {
-      display: block;
+    @media (pointer: fine) {
+      html.has-gl, html.has-gl * { cursor: none; }
+    }
+
+    #gl {
       position: fixed;
-      top: 0;
-      left: 0;
+      inset: 0;
       width: 100%;
       height: 100%;
+      display: block;
       z-index: 0;
     }
 
-    .content {
+    .mono {
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    /* ── Loader ─────────────────────────────────────────────────────── */
+    .loader {
       position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 10;
+      inset: 0;
+      z-index: 30;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+    }
+
+    .loader-inner {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 28px;
+      gap: 14px;
     }
 
-    .profile-photo {
-      width: clamp(180px, 32vw, 280px);
-      height: auto;
+    .loader-count {
+      color: var(--dim);
+      font-variant-numeric: tabular-nums;
+      transition: opacity 0.5s ease, transform 0.9s var(--ease-out);
+    }
+
+    .loader-line {
+      width: min(22vw, 220px);
+      height: 1px;
+      background: var(--ink);
+      transform: scaleX(0);
+      transform-origin: center;
+      opacity: 0.85;
+    }
+
+    .loader.done .loader-count { opacity: 0; transform: translateY(-12px); }
+    .loader.done .loader-line {
+      animation: horizon 1.1s var(--ease-out) forwards;
+    }
+
+    @keyframes horizon {
+      0%   { transform: scaleX(var(--p, 1)); opacity: 0.85; }
+      45%  { transform: scaleX(6); opacity: 1; height: 1px; }
+      100% { transform: scaleX(9); opacity: 0; height: 1px; }
+    }
+
+    /* ── Chrome / UI ────────────────────────────────────────────────── */
+    .top {
+      position: fixed;
+      top: var(--gutter);
+      left: var(--gutter);
+      right: var(--gutter);
+      z-index: 20;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
       opacity: 0;
-      transform: scale(0.88);
-      transition: opacity 1.6s ease, transform 1.6s ease;
+      transform: translateY(-8px);
+      transition: opacity 1.2s ease, transform 1.2s var(--ease-out);
     }
 
-    .profile-photo.revealed {
-      opacity: 1;
-      transform: scale(1);
+    .mark {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-style: italic;
+      font-size: 22px;
+      letter-spacing: -0.01em;
+      line-height: 1;
     }
 
-    .info {
-      text-align: center;
-      color: #fff;
+    .hint {
+      color: var(--dim);
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
-    .name {
-      font-size: clamp(1rem, 2.2vw, 1.3rem);
-      font-weight: 500;
-      letter-spacing: 0.08em;
-      margin-bottom: 8px;
-      white-space: nowrap;
+    .hint-bar {
+      position: relative;
+      width: 34px;
+      height: 1px;
+      background: rgba(220, 228, 255, 0.18);
+      overflow: hidden;
+    }
+
+    .hint-bar::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--ink);
+      transform-origin: left;
+      transform: scaleX(var(--burst));
+    }
+
+    .titles {
+      position: fixed;
+      left: var(--gutter);
+      right: var(--gutter);
+      bottom: calc(var(--gutter) * 0.7);
+      z-index: 20;
+      pointer-events: none;
+      opacity: calc(1 - var(--burst) * 0.55);
+      filter: blur(calc(var(--burst) * 3px));
+    }
+
+    .meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: clamp(6px, 1.2vw, 18px);
       opacity: 0;
-      transform: translateY(14px);
-      transition: opacity 1.1s ease, transform 1.1s ease;
-    }
-
-    .name.revealed {
-      opacity: 1;
-      transform: translateY(0);
+      transition: opacity 1s ease;
     }
 
     .role {
-      font-size: clamp(0.8rem, 1.4vw, 0.9rem);
-      font-weight: 400;
-      letter-spacing: 0.04em;
-      white-space: nowrap;
-      opacity: 0;
-      transform: translateY(14px);
-      transition: opacity 1.1s ease, transform 1.1s ease;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--ink);
     }
 
-    .role.revealed {
-      opacity: 0.5;
-      transform: translateY(0);
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--blue);
+      box-shadow: 0 0 12px 2px rgba(31, 75, 255, 0.85);
+      animation: pulse 2.4s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: 0.45; transform: scale(0.7); }
+    }
+
+    .rule {
+      flex: 1;
+      height: 1px;
+      margin: 0 18px;
+      background: linear-gradient(90deg, rgba(220, 228, 255, 0.28), rgba(220, 228, 255, 0));
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 1.8s var(--ease-out) 0.2s;
+    }
+
+    .name {
+      width: max-content;
+      padding-bottom: 0.13em;
+      font-size: 12vw;
+      line-height: 0.8;
+      font-weight: 500;
+      letter-spacing: -0.055em;
+      white-space: nowrap;
+    }
+
+    .word { display: inline-block; }
+    .word--b {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-style: italic;
+      font-weight: 400;
+      font-size: 1.1em;
+      letter-spacing: -0.035em;
+      margin-left: 0.14em;
+    }
+
+    .name.is-stacked .word { display: block; }
+    .name.is-stacked .word--b { margin-left: 0; }
+
+    /* Each glyph sits in its own mask; padding keeps accents and italics unclipped */
+    .char {
+      display: inline-block;
+      overflow: hidden;
+      padding: 0.16em 0.06em 0.12em;
+      margin: -0.16em -0.06em -0.12em;
+      vertical-align: top;
+      will-change: transform;
+    }
+
+    .char-inner {
+      display: inline-block;
+      transform: translateY(115%) rotate(6deg);
+      transform-origin: left bottom;
+      transition: transform 1.5s var(--ease-out);
+      transition-delay: calc(var(--i) * 55ms);
+    }
+
+    .is-revealed .char-inner { transform: none; }
+    .is-revealed .meta { opacity: 1; }
+    .is-revealed .rule { transform: scaleX(1); }
+    .top.is-revealed { opacity: 1; transform: none; }
+
+    /* ── Cursor ─────────────────────────────────────────────────────── */
+    .cursor {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 40;
+      width: 64px;
+      height: 64px;
+      margin: -32px 0 0 -32px;
+      pointer-events: none;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+
+    @media (pointer: fine) {
+      .has-gl .cursor { display: block; }
+    }
+
+    .cursor.is-visible { opacity: 1; }
+
+    .cursor svg {
+      position: absolute;
+      inset: 0;
+      overflow: visible;
+      transform: rotate(-90deg) scale(calc(0.55 + var(--burst) * 0.65));
+      transition: transform 0.5s var(--ease-out);
+    }
+
+    .cursor .ring-bg { fill: none; stroke: rgba(220, 228, 255, 0.35); stroke-width: 1; vector-effect: non-scaling-stroke; }
+    .cursor .ring-fg { fill: none; stroke: #fff; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+    .cursor .core { fill: #fff; }
+
+    .cursor-label {
+      position: absolute;
+      left: 50%;
+      top: 100%;
+      transform: translate(-50%, 6px);
+      font-size: 9px;
+      color: var(--dim);
+      white-space: nowrap;
+      transition: opacity 0.4s ease;
+    }
+
+    /* ── Fallback (no WebGL) ────────────────────────────────────────── */
+    .fallback {
+      display: none;
+      position: fixed;
+      top: 42%;
+      left: 50%;
+      width: min(62vw, 46vh);
+      transform: translate(-50%, -50%);
+      filter: drop-shadow(0 0 60px rgba(31, 75, 255, 0.45));
+    }
+
+    .no-gl .fallback { display: block; }
+    .no-gl .loader { display: none; }
+    .no-gl .char-inner { transform: none; transition: none; }
+    .no-gl .meta, .no-gl .top { opacity: 1; transform: none; }
+    .no-gl .rule { transform: scaleX(1); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .char-inner, .rule, .top, .meta { transition-duration: 0.01ms !important; transition-delay: 0s !important; }
+      .dot { animation: none; }
+    }
+
+    @media (max-width: 600px) {
+      .mono { font-size: 10px; }
+      .hint .hint-bar { width: 22px; }
     }
   </style>
 </head>
 <body>
-  <canvas id="canvas"></canvas>
+  <canvas id="gl" aria-hidden="true"></canvas>
+  <img class="fallback" src="/assets/profile.png" alt="André Gonçalves">
 
-  <div class="content">
-    <img src="/assets/profile.png" alt="André Gonçalves" class="profile-photo">
-    <div class="info">
-      <div class="name">André Gonçalves</div>
-      <div class="role">Code at Uphold</div>
+  <div class="loader" aria-hidden="true">
+    <div class="loader-inner">
+      <span class="loader-count mono">000</span>
+      <span class="loader-line"></span>
     </div>
   </div>
+
+  <header class="top">
+    <span class="mark" aria-hidden="true">AG</span>
+    <span class="hint mono" aria-hidden="true"><span class="hint-bar"></span><span class="hint-text">Press &amp; hold</span></span>
+  </header>
+
+  <main class="titles">
+    <div class="meta">
+      <p class="role mono" aria-label="Code at Uphold">
+        <span class="dot"></span><span class="role-text" aria-hidden="true">Code at Uphold</span>
+      </p>
+      <span class="rule"></span>
+    </div>
+    <h1 class="name" aria-label="André Gonçalves">
+      <span class="word word--a" aria-hidden="true">André</span><span class="word word--b" aria-hidden="true">Gonçalves</span>
+    </h1>
+  </main>
+
+  <div class="cursor" aria-hidden="true">
+    <svg viewBox="0 0 64 64">
+      <circle class="ring-bg" cx="32" cy="32" r="30"></circle>
+      <circle class="ring-fg" cx="32" cy="32" r="30" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"></circle>
+      <circle class="core" cx="32" cy="32" r="2.5"></circle>
+    </svg>
+    <span class="cursor-label mono">Hold</span>
+  </div>
+
+  <script>
+    // If the WebGL module never boots (offline CDN, old browser), show the static version
+    setTimeout(function () {
+      if (!window.__glBooted) document.documentElement.classList.add('no-gl');
+    }, 7000);
+  </script>
 
   <script type="importmap">
   {
     "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
     }
   }
   </script>
 
   <script type="module">
     import * as THREE from 'three';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+
+    const root         = document.documentElement;
+    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isCoarse     = matchMedia('(pointer: coarse)').matches;
+
+    // ── DOM ───────────────────────────────────────────────────────────────
+    const loaderEl    = document.querySelector('.loader');
+    const loaderCount = document.querySelector('.loader-count');
+    const loaderLine  = document.querySelector('.loader-line');
+    const topEl       = document.querySelector('.top');
+    const titlesEl    = document.querySelector('.titles');
+    const nameEl      = document.querySelector('.name');
+    const roleText    = document.querySelector('.role-text');
+    const hintText    = document.querySelector('.hint-text');
+    const cursorEl    = document.querySelector('.cursor');
+    const cursorRing  = cursorEl.querySelector('.ring-fg');
+    const cursorLabel = cursorEl.querySelector('.cursor-label');
+
+    if (isCoarse) hintText.textContent = 'Press & hold';
+    else hintText.textContent = 'Click & hold';
+
+    // Split the name into masked glyphs
+    const chars = [];
+    let charIndex = 0;
+    for (const word of nameEl.querySelectorAll('.word')) {
+      const text = word.textContent;
+      word.textContent = '';
+      for (const ch of text) {
+        const outer = document.createElement('span');
+        const inner = document.createElement('span');
+        outer.className = 'char';
+        inner.className = 'char-inner';
+        inner.style.setProperty('--i', charIndex++);
+        inner.textContent = ch;
+        outer.appendChild(inner);
+        word.appendChild(outer);
+        chars.push({ el: outer, cx: 0 });
+      }
+    }
+
+    // Fit the name edge to edge
+    let nameCenterY = 0;
+    let nameFontSize = 0;
+    function fitName() {
+      const stacked = innerWidth / innerHeight < 0.9;
+      nameEl.classList.toggle('is-stacked', stacked);
+      nameEl.style.fontSize = '100px';
+      const avail = titlesEl.clientWidth;
+      const words = [...nameEl.querySelectorAll('.word')];
+      const w = stacked
+        ? Math.max(...words.map(el => el.getBoundingClientRect().width))
+        : nameEl.getBoundingClientRect().width;
+      const fit = 100 * avail / w * 0.985;
+      nameFontSize = Math.min(fit, innerHeight * (stacked ? 0.16 : 0.26));
+      nameEl.style.fontSize = nameFontSize + 'px';
+
+      for (const c of chars) {
+        const r = c.el.getBoundingClientRect();
+        c.cx = r.left + r.width / 2;
+      }
+      const nr = nameEl.getBoundingClientRect();
+      nameCenterY = nr.top + nr.height / 2;
+    }
+
+    // Text decode — glyphs resolve left to right
+    const GLYPHS = '01<>/\\_=+*#{}[]';
+    let decodeToken = 0;
+    function decode(el, text, duration = 1100) {
+      const token = ++decodeToken;
+      const start = performance.now();
+      const step = () => {
+        if (token !== decodeToken) return;
+        const p = Math.min((performance.now() - start) / duration, 1);
+        const solved = Math.floor(p * text.length);
+        let out = '';
+        for (let i = 0; i < text.length; i++) {
+          const c = text[i];
+          if (c === ' ' || i < solved) out += c;
+          else out += GLYPHS[(Math.random() * GLYPHS.length) | 0];
+        }
+        el.textContent = out;
+        if (p < 1) requestAnimationFrame(step);
+      };
+      step();
+    }
+
+    function scramble(el, text) {
+      const token = ++decodeToken;
+      let last = 0;
+      const step = (now) => {
+        if (token !== decodeToken) return;
+        if (now - last > 50) {
+          last = now;
+          let out = '';
+          for (const c of text) out += c === ' ' ? ' ' : GLYPHS[(Math.random() * GLYPHS.length) | 0];
+          el.textContent = out;
+        }
+        requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }
+
+    const ROLE = roleText.textContent;
 
     // ── Renderer ──────────────────────────────────────────────────────────
-    const canvas = document.getElementById('canvas');
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-    const dpr = Math.min(window.devicePixelRatio, 2);
+    const canvas = document.getElementById('gl');
+    let renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+    } catch (err) {
+      root.classList.add('no-gl');
+      throw err;
+    }
+    window.__glBooted = true;
+    root.classList.add('has-gl');
+
+    let dpr = Math.min(window.devicePixelRatio, isCoarse ? 1.6 : 1.75);
     renderer.setPixelRatio(dpr);
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(innerWidth, innerHeight);
     renderer.setClearColor(0x00000f, 1);
 
-    // ── Scene & Camera ────────────────────────────────────────────────────
-    const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x00000f, 0.09); // dense at start, clears during intro
+    const scene  = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.1, 200);
+    const group  = new THREE.Group();
+    scene.add(group);
 
-    const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+    // ── Pointer + trail texture ───────────────────────────────────────────
+    // A low-res canvas records the pointer wake; particles read it in the vertex shader
+    const trail = {
+      canvas: document.createElement('canvas'),
+      points: [],
+      life: 1.4,
+    };
+    trail.ctx = trail.canvas.getContext('2d');
+    trail.texture = new THREE.CanvasTexture(trail.canvas);
 
-    // ── Intro camera path ─────────────────────────────────────────────────
-    // Sweeps from close to the wave surface up to the settled overview position
-    const INTRO_DUR   = 3.4;
-    const camFrom     = new THREE.Vector3(14, 0.6, 4);
-    const camTo       = new THREE.Vector3(0, 11, 28);
-    const atFrom      = new THREE.Vector3(0, 2.5, -6);
-    const atTo        = new THREE.Vector3(0, -3, 0);
-    const lookTarget  = new THREE.Vector3();
-
-    function easeInOutCubic(t) {
-      return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
+    function resizeTrail() {
+      trail.canvas.width  = 256;
+      trail.canvas.height = Math.max(64, Math.round(256 * innerHeight / innerWidth));
+      trail.radius = 256 * (isCoarse ? 0.11 : 0.075);
     }
 
-    // DOM elements revealed in sync with camera arrival
-    const photoEl = document.querySelector('.profile-photo');
-    const nameEl  = document.querySelector('.name');
-    const roleEl  = document.querySelector('.role');
-    let photoShown = false, nameShown = false, roleShown = false;
-
-    // ── Mouse / Touch ─────────────────────────────────────────────────────
-    const mouse       = new THREE.Vector2(0, 0);
-    const targetMouse = new THREE.Vector2(0, 0);
-
-    window.addEventListener('mousemove', e => {
-      targetMouse.x =  (e.clientX / window.innerWidth  - 0.5) * 2;
-      targetMouse.y = -(e.clientY / window.innerHeight - 0.5) * 2;
-    });
-
-    window.addEventListener('touchmove', e => {
-      if (e.touches.length > 0) {
-        targetMouse.x =  (e.touches[0].clientX / window.innerWidth  - 0.5) * 2;
-        targetMouse.y = -(e.touches[0].clientY / window.innerHeight - 0.5) * 2;
+    function updateTrail(dt) {
+      const { ctx, canvas: c } = trail;
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = trail.points.length - 1; i >= 0; i--) {
+        const p = trail.points[i];
+        p.age += dt;
+        if (p.age > trail.life) { trail.points.splice(i, 1); continue; }
+        const a = p.age < 0.08 ? p.age / 0.08 : 1 - (p.age - 0.08) / (trail.life - 0.08);
+        const intensity = Math.pow(a, 1.6) * p.force;
+        const r = trail.radius * (0.55 + p.force * 0.6);
+        const x = p.x * c.width, y = p.y * c.height;
+        const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, `rgba(255,255,255,${intensity * 0.55})`);
+        g.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
       }
-    }, { passive: true });
-
-    // ── Ocean particle grid ───────────────────────────────────────────────
-    const GRID   = 160;
-    const SPREAD = 64.0;
-    const count  = GRID * GRID;
-
-    const positions = new Float32Array(count * 3);
-    const randoms   = new Float32Array(count);
-
-    for (let ix = 0; ix < GRID; ix++) {
-      for (let iz = 0; iz < GRID; iz++) {
-        const i = ix * GRID + iz;
-        positions[i * 3 + 0] = (ix / (GRID - 1) - 0.5) * SPREAD;
-        positions[i * 3 + 1] = 0;
-        positions[i * 3 + 2] = (iz / (GRID - 1) - 0.5) * SPREAD;
-        randoms[i] = Math.random();
-      }
+      trail.texture.needsUpdate = true;
     }
 
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute('aRandom',  new THREE.BufferAttribute(randoms,   1));
+    const pointer = { x: innerWidth / 2, y: innerHeight / 2, nx: 0, ny: 0, sx: 0, sy: 0, active: false };
+    let lastMove = null;
 
-    // ── Vertex Shader ─────────────────────────────────────────────────────
-    const vertexShader = /* glsl */`
+    function onPointerMove(e) {
+      pointer.x = e.clientX;
+      pointer.y = e.clientY;
+      pointer.nx =  (e.clientX / innerWidth  - 0.5) * 2;
+      pointer.ny = -(e.clientY / innerHeight - 0.5) * 2;
+      pointer.active = true;
+
+      const u = e.clientX / innerWidth, v = e.clientY / innerHeight;
+      if (lastMove) {
+        const dx = (e.clientX - lastMove.x), dy = (e.clientY - lastMove.y);
+        const speed = Math.hypot(dx, dy);
+        const force = Math.min(0.25 + speed / 50, 1);
+        // Interpolate so fast swipes leave a continuous wake
+        const steps = Math.min(Math.ceil(speed / 14), 8);
+        for (let s = 1; s <= steps; s++) {
+          const t = s / steps;
+          trail.points.push({
+            x: (lastMove.x + dx * t) / innerWidth,
+            y: (lastMove.y + dy * t) / innerHeight,
+            age: 0, force,
+          });
+        }
+      } else {
+        trail.points.push({ x: u, y: v, age: 0, force: 0.4 });
+      }
+      if (trail.points.length > 120) trail.points.splice(0, trail.points.length - 120);
+      lastMove = { x: e.clientX, y: e.clientY };
+      cursorEl.classList.add('is-visible');
+    }
+
+    window.addEventListener('pointermove', onPointerMove, { passive: true });
+    document.addEventListener('pointerleave', () => { lastMove = null; cursorEl.classList.remove('is-visible'); });
+
+    // ── Hold to dissolve ──────────────────────────────────────────────────
+    let holding = false;
+    let introDone = false;
+
+    function startHold(e) {
+      if (!introDone) return;
+      if (e && e.pointerType !== 'mouse') onPointerMove(e);
+      holding = true;
+      scramble(roleText, ROLE);
+      cursorLabel.style.opacity = 0;
+    }
+
+    function endHold() {
+      if (!holding) return;
+      holding = false;
+      decode(roleText, ROLE, 900);
+      cursorLabel.style.opacity = 1;
+      if (isCoarse) lastMove = null;
+    }
+
+    window.addEventListener('pointerdown', startHold);
+    window.addEventListener('pointerup', endHold);
+    window.addEventListener('pointercancel', endHold);
+    window.addEventListener('blur', endHold);
+    window.addEventListener('contextmenu', e => e.preventDefault());
+
+    // ── Shaders ───────────────────────────────────────────────────────────
+    const NOISE = /* glsl */`
+      vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+      vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+      vec4 permute(vec4 x) { return mod289(((x * 34.0) + 10.0) * x); }
+      vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+
+      float snoise(vec3 v) {
+        const vec2 C = vec2(1.0 / 6.0, 1.0 / 3.0);
+        const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+        vec3 i  = floor(v + dot(v, C.yyy));
+        vec3 x0 = v - i + dot(i, C.xxx);
+        vec3 g  = step(x0.yzx, x0.xyz);
+        vec3 l  = 1.0 - g;
+        vec3 i1 = min(g.xyz, l.zxy);
+        vec3 i2 = max(g.xyz, l.zxy);
+        vec3 x1 = x0 - i1 + C.xxx;
+        vec3 x2 = x0 - i2 + C.yyy;
+        vec3 x3 = x0 - D.yyy;
+        i = mod289(i);
+        vec4 p = permute(permute(permute(
+                  i.z + vec4(0.0, i1.z, i2.z, 1.0))
+                + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+                + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+        float n_ = 0.142857142857;
+        vec3 ns = n_ * D.wyz - D.xzx;
+        vec4 j  = p - 49.0 * floor(p * ns.z * ns.z);
+        vec4 x_ = floor(j * ns.z);
+        vec4 y_ = floor(j - 7.0 * x_);
+        vec4 x  = x_ * ns.x + ns.yyyy;
+        vec4 y  = y_ * ns.x + ns.yyyy;
+        vec4 h  = 1.0 - abs(x) - abs(y);
+        vec4 b0 = vec4(x.xy, y.xy);
+        vec4 b1 = vec4(x.zw, y.zw);
+        vec4 s0 = floor(b0) * 2.0 + 1.0;
+        vec4 s1 = floor(b1) * 2.0 + 1.0;
+        vec4 sh = -step(h, vec4(0.0));
+        vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
+        vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
+        vec3 p0 = vec3(a0.xy, h.x);
+        vec3 p1 = vec3(a0.zw, h.y);
+        vec3 p2 = vec3(a1.xy, h.z);
+        vec3 p3 = vec3(a1.zw, h.w);
+        vec4 norm = taylorInvSqrt(vec4(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3)));
+        p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+        vec4 m = max(0.5 - vec4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), 0.0);
+        m = m * m;
+        return 105.0 * dot(m * m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
+      }
+
+      mat2 rot(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
+    `;
+
+    const portraitVertex = /* glsl */`
       uniform float uTime;
-      uniform vec2  uMouse;
-      uniform float uPixelRatio;
+      uniform float uAssemble;
+      uniform float uBurst;
+      uniform float uSize;
+      uniform float uScale;
+      uniform float uScan;
+      uniform float uMotion;
+      uniform sampler2D uTouch;
 
-      attribute float aRandom;
+      attribute vec3 aColor;
+      attribute vec4 aSeed;
+      attribute vec2 aUv;
 
-      varying float vElevation;
-      varying float vEdgeFade;
+      varying vec3  vColor;
+      varying float vAlpha;
 
-      vec3 gerstner(vec2 pos, vec2 dir, float steepness, float wl, float spd) {
-        float k = 6.28318 / wl;
-        float c = sqrt(9.81 / k) * spd;
-        float f = k * dot(normalize(dir), pos) - c * uTime;
-        float a = steepness / k;
-        return vec3(dir.x * a * cos(f), a * sin(f), dir.y * a * cos(f));
-      }
+      ${NOISE}
 
       void main() {
-        vec3 pos = position;
+        // Portrait at rest, breathing
+        vec3 target = position;
+        float t0 = uTime * 0.18;
+        target.z  += snoise(vec3(target.xy * 0.55, t0 + aSeed.x)) * 0.14 * uMotion;
+        target.xy += vec2(
+          snoise(vec3(target.xy * 1.3, t0 + 3.1)),
+          snoise(vec3(target.yx * 1.3, t0 + 9.7))
+        ) * 0.018 * uMotion;
 
-        vec3 w  = gerstner(pos.xz, vec2( 1.00,  0.30), 0.55, 12.0, 0.40);
-            w += gerstner(pos.xz, vec2(-0.60,  1.00), 0.45,  8.0, 0.55);
-            w += gerstner(pos.xz, vec2( 0.40, -0.80), 0.35,  5.5, 0.70);
-            w += gerstner(pos.xz, vec2( 0.80,  0.60), 0.25,  3.5, 0.90);
-            w += gerstner(pos.xz, vec2(-0.30, -0.50), 0.18,  2.2, 1.20);
-            w += gerstner(pos.xz, vec2( 0.70, -0.20), 0.10,  1.4, 1.60);
+        // Origin: a three-armed spiral galaxy, tilted toward the camera
+        float arm  = floor(aSeed.y * 3.0);
+        float r    = 0.4 + pow(aSeed.x, 0.7) * 9.5;
+        float ang  = arm * 2.0944 + r * 0.62 + (aSeed.z - 0.5) * 1.1 - uTime * 0.6 / (0.6 + r * 0.25);
+        vec3 galaxy = vec3(cos(ang) * r, (aSeed.w - 0.5) * (0.25 + r * 0.06), sin(ang) * r);
+        galaxy.yz = rot(-1.15) * galaxy.yz;
 
-        pos += w;
+        // Staggered assembly — outer particles arrive first, then the scan from the top
+        float delay = aSeed.x * 0.36 + (1.0 - aUv.y) * 0.14;
+        float t  = clamp((uAssemble - delay) / 0.5, 0.0, 1.0);
+        float e  = 1.0 - pow(1.0 - t, 4.0);
+        float fl = sin(e * 3.14159);
 
-        vec2  mWorld = uMouse * 18.0;
-        float mDist  = distance(pos.xz, mWorld);
-        pos.y += sin(mDist * 1.3 - uTime * 4.5) * exp(-mDist * 0.20) * 2.2;
+        vec3 pos = mix(galaxy, target, e);
+        pos.xy = rot((1.0 - e) * (aSeed.y - 0.5) * 3.0) * pos.xy;
+        pos += vec3(
+          snoise(vec3(aSeed.xy * 4.0, uTime * 0.3)),
+          snoise(vec3(aSeed.yz * 4.0, uTime * 0.3 + 5.0)),
+          snoise(vec3(aSeed.zw * 4.0, uTime * 0.3 + 11.0))
+        ) * fl * 1.1;
 
-        vElevation = pos.y;
+        // Hold: the portrait dissolves into an orbiting accretion disc
+        float b  = smoothstep(aSeed.z * 0.4, aSeed.z * 0.4 + 0.6, uBurst);
+        float vr = 1.1 + pow(aSeed.x, 0.8) * 5.2;
+        float va = aSeed.y * 6.28318 + uTime * 2.2 / (0.5 + vr * 0.32);
+        vec3 vortex = vec3(cos(va) * vr, (aSeed.w - 0.5) * (0.05 + vr * 0.035), sin(va) * vr);
+        vortex.yz = rot(-0.32) * vortex.yz;
+        vortex.xy = rot(0.16) * vortex.xy;
+        vortex += vec3(snoise(vec3(aSeed.xw * 3.0, uTime * 0.5))) * 0.25;
+        pos = mix(pos, vortex, b);
 
-        float edge = length(position.xz) / (${SPREAD.toFixed(1)} * 0.5);
-        vEdgeFade  = 1.0 - smoothstep(0.52, 1.0, edge);
+        // Pointer wake, sampled in screen space
+        vec4 clip = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+        vec2 suv  = clip.xy / clip.w * 0.5 + 0.5;
+        float touch = texture2D(uTouch, suv).r * (1.0 - b);
+        float ta = aSeed.w * 6.28318 + uTime * 0.5;
+        pos.xy += vec2(cos(ta), sin(ta)) * touch * (0.15 + aSeed.x * 0.55);
+        pos.z  += touch * (0.4 + aSeed.y * 1.6);
 
-        vec4 mvPos   = modelViewMatrix * vec4(pos, 1.0);
-        gl_Position  = projectionMatrix * mvPos;
+        vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+        gl_Position = projectionMatrix * mv;
 
-        float sz = (1.8 + aRandom * 2.8 + max(0.0, vElevation) * 0.9) * uPixelRatio;
-        gl_PointSize = clamp(sz * 20.0 / -mvPos.z, 1.0, 16.0);
+        // Scanline sweeping top to bottom
+        float scanY = 1.25 - fract(uTime * 0.085) * 1.7;
+        float band  = exp(-pow((aUv.y - scanY) * 30.0, 2.0)) * uScan * e * (1.0 - b);
+
+        float size = uSize * (0.55 + aSeed.z * 0.9);
+        size *= 1.0 + band * 1.4 + touch * 0.9;
+        size *= mix(1.0 + (1.0 - e) * 0.5, 0.75 + aSeed.w * 0.6, b);
+        gl_PointSize = max(size * uScale / -mv.z, 1.0);
+
+        vec3 galaxyCol = mix(vec3(0.10, 0.26, 1.0), vec3(0.75, 0.84, 1.0), pow(aSeed.y, 2.0));
+        vec3 col = mix(galaxyCol, aColor, e);
+        vec3 discCol = mix(vec3(0.07, 0.22, 1.0), vec3(0.95, 0.97, 1.0), pow(1.0 - aSeed.x, 4.0));
+        col = mix(col, discCol, b);
+        col += vec3(0.45, 0.62, 1.0) * band * 0.9;
+        col += vec3(0.35, 0.55, 1.0) * touch * 0.7;
+
+        vColor = col;
+        vAlpha = mix(2.2, 1.0, e) * mix(1.0, 1.5, b);
       }
     `;
 
-    // ── Fragment Shader ───────────────────────────────────────────────────
-    const fragmentShader = /* glsl */`
-      varying float vElevation;
-      varying float vEdgeFade;
+    const pointFragment = /* glsl */`
+      uniform float uOpacity;
+      uniform float uGain;
+      varying vec3  vColor;
+      varying float vAlpha;
 
       void main() {
-        vec2  uv = gl_PointCoord - 0.5;
-        float d  = length(uv);
+        float d = length(gl_PointCoord - 0.5);
         if (d > 0.5) discard;
-
-        float t = clamp(vElevation * 0.32 + 0.48, 0.0, 1.0);
-
-        vec3 deep  = vec3(0.00, 0.01, 0.10);
-        vec3 mid   = vec3(0.02, 0.05, 0.48);
-        vec3 surf  = vec3(0.07, 0.16, 0.95);
-        vec3 foam  = vec3(0.35, 0.48, 1.00);
-
-        vec3 col;
-        if      (t < 0.42) col = mix(deep, mid,  t / 0.42);
-        else if (t < 0.78) col = mix(mid,  surf, (t - 0.42) / 0.36);
-        else               col = mix(surf, foam, (t - 0.78) / 0.22);
-
-        float alpha = pow((0.5 - d) / 0.5, 1.5);
-        alpha *= vEdgeFade;
-        alpha *= 0.82 + t * 0.18;
-
-        gl_FragColor = vec4(col, alpha);
+        float a = pow(1.0 - d * 2.0, 1.4);
+        gl_FragColor = vec4(vColor * a * vAlpha * uOpacity * uGain, 1.0);
       }
     `;
 
-    const mat = new THREE.ShaderMaterial({
-      vertexShader,
-      fragmentShader,
-      uniforms: {
-        uTime:       { value: 0 },
-        uMouse:      { value: new THREE.Vector2() },
-        uPixelRatio: { value: dpr },
-      },
-      transparent: true,
-      depthWrite:  false,
-      blending:    THREE.AdditiveBlending,
-    });
+    // ── Portrait particles from the photo ─────────────────────────────────
+    const PORTRAIT_W = 7.0;
+    let PORTRAIT_H   = 7.0;
+    let portraitMat  = null;
+    let portrait     = null;
 
-    scene.add(new THREE.Points(geo, mat));
+    // Duotone ramp: shadows → electric blue → ice white
+    const RAMP = [
+      [0.00, [0.00, 0.02, 0.14]],
+      [0.22, [0.05, 0.20, 1.00]],
+      [0.50, [0.32, 0.52, 1.00]],
+      [0.78, [0.78, 0.86, 1.00]],
+      [1.00, [1.00, 1.00, 1.00]],
+    ];
 
-    // ── Background star field ─────────────────────────────────────────────
-    const STARS    = 2000;
-    const starPos  = new Float32Array(STARS * 3);
-    const starSize = new Float32Array(STARS);
-
-    for (let i = 0; i < STARS; i++) {
-      const r  = Math.random() * 200 + 60;
-      const th = Math.random() * Math.PI * 2;
-      const ph = Math.acos(Math.random() * 2 - 1);
-      starPos[i*3]   = r * Math.sin(ph) * Math.cos(th);
-      starPos[i*3+1] = r * Math.sin(ph) * Math.sin(th) + 50;
-      starPos[i*3+2] = r * Math.cos(ph) - 70;
-      starSize[i] = Math.random() * 1.2 + 0.3;
+    function ramp(t) {
+      for (let i = 1; i < RAMP.length; i++) {
+        if (t <= RAMP[i][0]) {
+          const [t0, c0] = RAMP[i - 1], [t1, c1] = RAMP[i];
+          const k = (t - t0) / (t1 - t0);
+          return [c0[0] + (c1[0] - c0[0]) * k, c0[1] + (c1[1] - c0[1]) * k, c0[2] + (c1[2] - c0[2]) * k];
+        }
+      }
+      return RAMP[RAMP.length - 1][1];
     }
 
-    const starGeo = new THREE.BufferGeometry();
-    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos,  3));
-    starGeo.setAttribute('size',     new THREE.BufferAttribute(starSize, 1));
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+    }
 
-    const starMat = new THREE.ShaderMaterial({
-      uniforms: { uTime: { value: 0 }, uDPR: { value: dpr } },
+    async function buildPortrait() {
+      const img = await loadImage('/assets/profile.png');
+      const S  = isCoarse || innerWidth < 700 ? 170 : 250;
+      const SH = Math.round(S * img.height / img.width);
+      PORTRAIT_H = PORTRAIT_W * img.height / img.width;
+
+      const c = document.createElement('canvas');
+      c.width = S; c.height = SH;
+      const ctx = c.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0, S, SH);
+      const data = ctx.getImageData(0, 0, S, SH).data;
+
+      const pos = [], col = [], seed = [], uv = [];
+      const cell = PORTRAIT_W / S;
+
+      for (let y = 0; y < SH; y++) {
+        for (let x = 0; x < S; x++) {
+          const i = (y * S + x) * 4;
+          if (data[i + 3] < 140) continue;
+          const r = data[i] / 255, g = data[i + 1] / 255, b = data[i + 2] / 255;
+          const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+          const isBackdrop = b > 0.45 && b > r * 1.8 && b > g * 1.5;
+          const isShadow   = lum < 0.11 && !isBackdrop;
+
+          // Thin out the flat areas so the face carries the density
+          if (isShadow && Math.random() > 0.14) continue;
+          if (isBackdrop && Math.random() > 0.62) continue;
+
+          const jx = (x + Math.random()) / S, jy = (y + Math.random()) / SH;
+          let z;
+          let rgb;
+          if (isBackdrop) {
+            z = -0.35 + Math.random() * 0.2;
+            const k = 0.16 + b * 0.22;
+            rgb = ramp(k).map(v => v * 0.8);
+          } else if (isShadow) {
+            z = 0.25 + Math.random() * 0.15;
+            rgb = [0.03, 0.08, 0.38];
+          } else {
+            // Brighter features sit forward — the profile gets relief
+            z = 0.25 + Math.pow(lum, 0.8) * 0.9;
+            const t = Math.min(0.18 + Math.pow(lum, 0.85) * 1.05, 1);
+            const base = ramp(t);
+            // A trace of the original skin tone keeps the face human
+            rgb = [base[0] * 0.82 + r * 0.18, base[1] * 0.82 + g * 0.18, base[2] * 0.85 + b * 0.15].map(v => v * 1.4);
+          }
+
+          pos.push((jx - 0.5) * PORTRAIT_W, (0.5 - jy) * PORTRAIT_H, z);
+          col.push(...rgb);
+          seed.push(Math.random(), Math.random(), Math.random(), Math.random());
+          uv.push(jx, 1 - jy);
+        }
+      }
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      geo.setAttribute('aColor',   new THREE.Float32BufferAttribute(col, 3));
+      geo.setAttribute('aSeed',    new THREE.Float32BufferAttribute(seed, 4));
+      geo.setAttribute('aUv',      new THREE.Float32BufferAttribute(uv, 2));
+
+      portraitMat = new THREE.ShaderMaterial({
+        vertexShader: portraitVertex,
+        fragmentShader: pointFragment,
+        uniforms: {
+          uTime:     { value: 0 },
+          uAssemble: { value: reduceMotion ? 1 : 0 },
+          uBurst:    { value: 0 },
+          uSize:     { value: cell * 1.7 },
+          uScale:    { value: 1 },
+          uScan:     { value: reduceMotion ? 0 : 1 },
+          uMotion:   { value: reduceMotion ? 0.2 : 1 },
+          uOpacity:  { value: reduceMotion ? 1 : 0 },
+          uGain:     { value: 0.36 },
+          uTouch:    { value: trail.texture },
+        },
+        transparent: true,
+        depthWrite: false,
+        depthTest: false,
+        blending: THREE.AdditiveBlending,
+      });
+
+      portrait = new THREE.Points(geo, portraitMat);
+      portrait.frustumCulled = false;
+      group.add(portrait);
+      resize();
+    }
+
+    // ── Ambient dust for depth ────────────────────────────────────────────
+    const DUST = isCoarse ? 700 : 1400;
+    const dustPos = new Float32Array(DUST * 3);
+    const dustSeed = new Float32Array(DUST);
+    for (let i = 0; i < DUST; i++) {
+      dustPos[i * 3]     = (Math.random() - 0.5) * 34;
+      dustPos[i * 3 + 1] = (Math.random() - 0.5) * 22;
+      dustPos[i * 3 + 2] = -14 + Math.random() * 20;
+      dustSeed[i] = Math.random();
+    }
+    const dustGeo = new THREE.BufferGeometry();
+    dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+    dustGeo.setAttribute('aSeed', new THREE.BufferAttribute(dustSeed, 1));
+
+    const dustMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime:    { value: 0 },
+        uScale:   { value: 1 },
+        uOpacity: { value: 0 },
+        uGain:    { value: 1 },
+        uBurst:   { value: 0 },
+      },
       vertexShader: /* glsl */`
-        attribute float size;
         uniform float uTime;
-        uniform float uDPR;
+        uniform float uScale;
+        uniform float uBurst;
+        attribute float aSeed;
+        varying vec3  vColor;
         varying float vAlpha;
         void main() {
-          vec4 mv = modelViewMatrix * vec4(position, 1.0);
-          gl_Position  = projectionMatrix * mv;
-          float twinkle = sin(uTime * 1.8 + position.x * 0.4 + position.z * 0.3) * 0.35 + 0.65;
-          vAlpha = twinkle * smoothstep(200.0, 40.0, -mv.z);
-          gl_PointSize = size * uDPR * (120.0 / -mv.z);
+          vec3 p = position;
+          p.y = mod(position.y + 11.0 + uTime * (0.08 + aSeed * 0.12), 22.0) - 11.0;
+          p.x += sin(uTime * 0.2 + aSeed * 40.0) * 0.4;
+          float sw = uBurst * (1.0 + aSeed) * 0.8;
+          float c = cos(sw), s = sin(sw);
+          p.xz = mat2(c, -s, s, c) * p.xz;
+          vec4 mv = modelViewMatrix * vec4(p, 1.0);
+          gl_Position = projectionMatrix * mv;
+          float tw = 0.55 + 0.45 * sin(uTime * (1.0 + aSeed * 2.0) + aSeed * 30.0);
+          vAlpha = tw * smoothstep(60.0, 8.0, -mv.z) * (0.25 + aSeed * 0.35);
+          vColor = mix(vec3(0.25, 0.42, 1.0), vec3(0.85, 0.9, 1.0), aSeed);
+          gl_PointSize = max((0.025 + aSeed * 0.05) * uScale / -mv.z, 1.0);
         }
+      `,
+      fragmentShader: pointFragment,
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const dust = new THREE.Points(dustGeo, dustMat);
+    dust.frustumCulled = false;
+    scene.add(dust);
+
+    // ── Post-processing ───────────────────────────────────────────────────
+    const composer = new EffectComposer(renderer);
+    composer.setPixelRatio(dpr);
+    composer.setSize(innerWidth, innerHeight);
+    composer.addPass(new RenderPass(scene, camera));
+
+    const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.6, 0.6, 0.3);
+    composer.addPass(bloom);
+
+    const finalPass = new ShaderPass({
+      uniforms: {
+        tDiffuse:    { value: null },
+        uTime:       { value: 0 },
+        uAberration: { value: 0.003 },
+        uGlow:       { value: 0 },
+        uGlowCenter: { value: new THREE.Vector2(0.5, 0.56) },
+        uAspect:     { value: innerWidth / innerHeight },
+      },
+      vertexShader: /* glsl */`
+        varying vec2 vUv;
+        void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
       `,
       fragmentShader: /* glsl */`
-        varying float vAlpha;
+        uniform sampler2D tDiffuse;
+        uniform float uTime;
+        uniform float uAberration;
+        uniform float uGlow;
+        uniform vec2  uGlowCenter;
+        uniform float uAspect;
+        varying vec2 vUv;
+
+        float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+
         void main() {
-          float d = length(gl_PointCoord - 0.5);
-          if (d > 0.5) discard;
-          float a = smoothstep(0.5, 0.0, d) * vAlpha;
-          gl_FragColor = vec4(0.40, 0.52, 1.0, a);
+          vec2 c = vUv - 0.5;
+          float r = length(c * vec2(uAspect, 1.0)) / max(uAspect, 1.0);
+          vec2 off = c * uAberration * (0.35 + r * 2.4);
+
+          vec3 col;
+          col.r = texture2D(tDiffuse, vUv + off).r;
+          col.g = texture2D(tDiffuse, vUv).g;
+          col.b = texture2D(tDiffuse, vUv - off * 1.4).b;
+
+          // Deep navy base with a soft halo behind the portrait
+          vec2 g = (vUv - uGlowCenter) * vec2(uAspect, 1.0);
+          col += vec3(0.0, 0.0, 0.06);
+          col += vec3(0.02, 0.05, 0.28) * exp(-dot(g, g) * 5.0) * uGlow;
+
+          // Vignette
+          col *= mix(1.0, 0.35, smoothstep(0.35, 1.0, length(c * vec2(1.0, 1.15)) * 1.35));
+
+          // Film grain
+          float n = hash(vUv * 1000.0 + fract(uTime * 7.31) * 100.0);
+          col += (n - 0.5) * 0.045;
+
+          gl_FragColor = vec4(max(col, 0.0), 1.0);
         }
       `,
-      transparent: true,
-      depthWrite:  false,
-      blending:    THREE.AdditiveBlending,
     });
+    composer.addPass(finalPass);
 
-    const stars = new THREE.Points(starGeo, starMat);
-    scene.add(stars);
+    // ── Layout ────────────────────────────────────────────────────────────
+    let baseDist = 14;
+    let groupY = 0;
 
-    // ── Animation loop ────────────────────────────────────────────────────
-    const clock = new THREE.Clock();
+    function resize() {
+      const w = innerWidth, h = innerHeight, aspect = w / h;
+      dpr = Math.min(window.devicePixelRatio, isCoarse ? 1.6 : 1.75);
+      renderer.setPixelRatio(dpr);
+      renderer.setSize(w, h);
+      composer.setPixelRatio(dpr);
+      composer.setSize(w, h);
+      camera.aspect = aspect;
+      camera.updateProjectionMatrix();
 
-    function animate() {
-      requestAnimationFrame(animate);
-      const elapsed = clock.getElapsedTime();
+      const tanHalf = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+      const narrow  = aspect < 0.9;
+      const heightFrac = narrow ? 0.62 : 0.84;
+      const widthFrac  = narrow ? 0.98 : 0.62;
+      const distH = (PORTRAIT_H / heightFrac) / 2 / tanHalf;
+      const distW = (PORTRAIT_W / widthFrac) / 2 / tanHalf / aspect;
+      baseDist = Math.max(distH, distW);
 
-      // Smooth mouse lag
-      mouse.x += (targetMouse.x - mouse.x) * 0.04;
-      mouse.y += (targetMouse.y - mouse.y) * 0.04;
+      const visibleH = 2 * baseDist * tanHalf;
+      const centerFrac = narrow ? 0.38 : 0.45;
+      groupY = (0.5 - centerFrac) * visibleH;
+      finalPass.uniforms.uGlowCenter.value.set(0.5, 1 - centerFrac);
+      finalPass.uniforms.uAspect.value = aspect;
 
-      mat.uniforms.uTime.value     = elapsed;
-      mat.uniforms.uMouse.value.copy(mouse);
-      starMat.uniforms.uTime.value = elapsed;
+      const scale = renderer.domElement.height * 0.5 * camera.projectionMatrix.elements[5];
+      if (portraitMat) portraitMat.uniforms.uScale.value = scale;
+      dustMat.uniforms.uScale.value = scale;
 
-      // ── Cinematic intro ─────────────────────────────────────────────────
-      const raw   = Math.min(elapsed / INTRO_DUR, 1.0);
-      const eased = easeInOutCubic(raw);
-
-      // Camera position & lookAt sweep
-      camera.position.lerpVectors(camFrom, camTo, eased);
-      lookTarget.lerpVectors(atFrom, atTo, eased);
-
-      // Mouse parallax fades in smoothly after intro settles (over 1s)
-      const mouseBlend = Math.min(Math.max(elapsed - INTRO_DUR, 0) / 1.0, 1.0);
-      camera.position.x += mouse.x * 3.5 * mouseBlend;
-      camera.position.y += mouse.y * 2.0 * mouseBlend;
-      lookTarget.y      += mouse.y * 0.6 * mouseBlend;
-
-      camera.lookAt(lookTarget);
-
-      // Fog clears as camera rises from the surface
-      scene.fog.density = 0.09 - eased * (0.09 - 0.026);
-
-      // ── Sync DOM reveals with camera progress ───────────────────────────
-      if (!photoShown && raw > 0.58) {
-        photoEl.classList.add('revealed');
-        photoShown = true;
-      }
-      if (!nameShown && raw > 0.74) {
-        nameEl.classList.add('revealed');
-        nameShown = true;
-      }
-      if (!roleShown && raw > 0.86) {
-        roleEl.classList.add('revealed');
-        roleShown = true;
-      }
-
-      stars.rotation.y += 0.00008;
-      renderer.render(scene, camera);
+      resizeTrail();
+      fitName();
     }
 
-    animate();
+    window.addEventListener('resize', resize);
 
-    // ── Resize ────────────────────────────────────────────────────────────
-    window.addEventListener('resize', () => {
-      const w = window.innerWidth, h = window.innerHeight;
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
-      const d = Math.min(window.devicePixelRatio, 2);
-      mat.uniforms.uPixelRatio.value = d;
-      starMat.uniforms.uDPR.value    = d;
-    });
+    // ── Timeline ──────────────────────────────────────────────────────────
+    const clamp01   = v => Math.min(Math.max(v, 0), 1);
+    const easeOut3  = t => 1 - Math.pow(1 - t, 3);
+    const easeInOut = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    const lerp      = (a, b, t) => a + (b - a) * t;
+
+    const LOADER_MIN = reduceMotion ? 0 : 1.4;
+    let ready = false;
+    let loaderDoneAt = null;
+    let revealed = false;
+    let burst = 0;
+    let shownProgress = 0;
+    const cursorPos = { x: innerWidth / 2, y: innerHeight / 2 };
+    const camLook = new THREE.Vector3();
+    const smooth = { x: 0, y: 0 };
+
+    function reveal() {
+      if (revealed) return;
+      revealed = true;
+      titlesEl.classList.add('is-revealed');
+      setTimeout(() => decode(roleText, ROLE, 1400), reduceMotion ? 0 : 700);
+      setTimeout(() => topEl.classList.add('is-revealed'), reduceMotion ? 0 : 1100);
+    }
+
+    const start = performance.now();
+    let prev = start;
+
+    function frame(now) {
+      requestAnimationFrame(frame);
+      const t  = (now - start) / 1000;
+      const dt = Math.min((now - prev) / 1000, 0.05);
+      prev = now;
+
+      // Loader counts while the photo decodes
+      const target = Math.min(LOADER_MIN ? t / LOADER_MIN : 1, ready ? 1 : 0.9);
+      shownProgress += (target - shownProgress) * (1 - Math.exp(-dt * 10));
+      if (target >= 1 && shownProgress > 0.995) shownProgress = 1;
+      if (loaderDoneAt === null) {
+        loaderCount.textContent = String(Math.round(shownProgress * 100)).padStart(3, '0');
+        loaderLine.style.transform = `scaleX(${shownProgress})`;
+        loaderLine.style.setProperty('--p', shownProgress);
+        if (shownProgress === 1 && ready) {
+          loaderDoneAt = t;
+          loaderEl.classList.add('done');
+          loaderLine.style.transform = '';
+          setTimeout(() => loaderEl.remove(), 1400);
+        }
+      }
+
+      const intro = loaderDoneAt === null ? 0 : t - loaderDoneAt;
+      const assemble = reduceMotion ? 1 : clamp01((intro - 0.15) / 3.6);
+      const settle   = easeInOut(assemble);
+
+      if (!revealed && intro > (reduceMotion ? 0 : 2.3)) reveal();
+      if (!introDone && intro > (reduceMotion ? 0.1 : 3.9)) introDone = true;
+
+      // Hold
+      const goal = holding ? 1 : 0;
+      burst += (goal - burst) * (1 - Math.exp(-dt * (holding ? 1.5 : 2.4)));
+      if (Math.abs(goal - burst) < 0.0005) burst = goal;
+      root.style.setProperty('--burst', burst.toFixed(3));
+      cursorRing.style.strokeDashoffset = (1 - burst).toFixed(3);
+
+      // Pointer smoothing
+      const pk = 1 - Math.exp(-dt * 3);
+      smooth.x += ((pointer.active ? pointer.nx : 0) - smooth.x) * pk;
+      smooth.y += ((pointer.active ? pointer.ny : 0) - smooth.y) * pk;
+
+      const ck = 1 - Math.exp(-dt * 18);
+      cursorPos.x += (pointer.x - cursorPos.x) * ck;
+      cursorPos.y += (pointer.y - cursorPos.y) * ck;
+      cursorEl.style.transform = `translate3d(${cursorPos.x}px, ${cursorPos.y}px, 0)`;
+
+      // Camera: dolly in from the galaxy, then drift with the pointer
+      const introCam = reduceMotion ? 1 : easeOut3(clamp01(intro / 4.4));
+      const dist = baseDist * lerp(2.3, 1, introCam) * (1 - burst * 0.12);
+      const parallax = introDone ? 1 : clamp01((intro - 3.0) / 1.2);
+      camera.position.set(smooth.x * 0.9 * parallax, smooth.y * 0.5 * parallax + (1 - introCam) * 2.5, dist);
+      camLook.set(0, groupY * (1 - burst * 0.6), 0);
+      camera.lookAt(camLook);
+      camera.rotation.z += (1 - introCam) * 0.35;
+
+      group.position.y = groupY;
+      group.rotation.y = smooth.x * 0.28 * parallax + (1 - settle) * 0.6;
+      group.rotation.x = -smooth.y * 0.14 * parallax;
+
+      if (portraitMat) {
+        const u = portraitMat.uniforms;
+        u.uTime.value = t;
+        u.uAssemble.value = assemble;
+        u.uBurst.value = burst;
+        u.uOpacity.value = reduceMotion ? 1 : clamp01(intro / 0.7);
+      }
+      dustMat.uniforms.uTime.value = t;
+      dustMat.uniforms.uBurst.value = burst;
+      dustMat.uniforms.uOpacity.value = reduceMotion ? 1 : clamp01((intro - 0.4) / 2.0);
+
+      bloom.strength = lerp(1.5, 0.55, settle) + burst * 0.6;
+      bloom.radius = lerp(0.9, 0.55, settle);
+      finalPass.uniforms.uTime.value = t;
+      finalPass.uniforms.uAberration.value = 0.0035 + (1 - settle) * 0.022 * (intro > 0 ? 1 : 0) + burst * 0.007;
+      finalPass.uniforms.uGlow.value = clamp01(intro / 2.5) * (1 + burst * 0.8);
+
+      // Name glyphs lean toward the pointer
+      if (revealed && !isCoarse && pointer.active) {
+        const reach = nameFontSize * 1.1;
+        const py = clamp01(1 - Math.abs(pointer.y - nameCenterY) / (innerHeight * 0.45));
+        for (const c of chars) {
+          const d = (pointer.x - c.cx) / reach;
+          const lift = Math.exp(-d * d) * py;
+          c.el.style.transform = `translate3d(0, ${(-lift * 0.07).toFixed(4)}em, 0)`;
+        }
+      }
+
+      updateTrail(dt);
+      composer.render();
+    }
+
+    resize();
+    requestAnimationFrame(frame);
+
+    const fontsReady = document.fonts ? document.fonts.ready : Promise.resolve();
+    fontsReady.then(fitName);
+
+    Promise.all([buildPortrait(), fontsReady])
+      .then(() => { ready = true; })
+      .catch(err => {
+        console.error(err);
+        root.classList.add('no-gl');
+        reveal();
+      });
   </script>
 </body>
 </html>
