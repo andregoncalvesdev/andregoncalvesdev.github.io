@@ -588,7 +588,7 @@
         gl_Position = projectionMatrix * mv;
 
         float size = uSize * (0.75 + aSeed.z * 0.5);
-        size *= 1.0 + touch * 0.9;
+        size *= 1.0 + touch * 0.4;
         size *= mix(1.0 + (1.0 - e) * 0.5, 0.75 + aSeed.w * 0.6, b);
         gl_PointSize = max(size * uScale / -mv.z, 1.0);
 
@@ -596,16 +596,16 @@
         float crest = smoothstep(0.15, 0.7, flow);
         vec3 sphereCol = mix(vec3(0.05, 0.18, 1.0), vec3(0.55, 0.70, 1.0), crest * 0.7 + pow(aSeed.w, 6.0) * 0.6);
         vec3 col = mix(galaxyCol, sphereCol, e);
-        vec3 discCol = mix(vec3(0.07, 0.22, 1.0), vec3(0.95, 0.97, 1.0), pow(1.0 - aSeed.x, 4.0));
+        vec3 discCol = mix(vec3(0.06, 0.20, 1.0), vec3(0.42, 0.58, 1.0), pow(1.0 - aSeed.x, 3.0));
         col = mix(col, discCol, b);
-        col += vec3(0.35, 0.55, 1.0) * touch * 0.7;
+        col += vec3(0.05, 0.22, 1.0) * touch * 0.35;
 
         // Clear the sphere's face so the photo and name sit in a calm centre
         float core = mix(0.22, 1.0, smoothstep(0.25, 0.85, length(target.xy) / 3.0));
         core = mix(1.0, core, e * (1.0 - b));
 
         vColor = col;
-        vAlpha = mix(2.2, 1.0, e) * mix(1.0, 1.5, b) * core;
+        vAlpha = mix(2.2, 1.0, e) * mix(1.0, 0.85, b) * core;
       }
     `;
 
@@ -922,11 +922,11 @@
       dustMat.uniforms.uBurst.value = burst;
       dustMat.uniforms.uOpacity.value = reduceMotion ? 1 : clamp01((intro - 0.4) / 2.0);
 
-      bloom.strength = lerp(1.1, 0.35, settle) + burst * 0.35;
+      bloom.strength = lerp(1.1, 0.35, settle) + burst * 0.1;
       bloom.radius = lerp(0.7, 0.3, settle);
       finalPass.uniforms.uTime.value = t;
       finalPass.uniforms.uAberration.value = (1 - settle) * 0.008 * (intro > 0 ? 1 : 0);
-      finalPass.uniforms.uGlow.value = clamp01(intro / 2.5) * (1 + burst * 0.8);
+      finalPass.uniforms.uGlow.value = clamp01(intro / 2.5) * (1 + burst * 0.3);
 
       updateTrail(dt);
       composer.render();
