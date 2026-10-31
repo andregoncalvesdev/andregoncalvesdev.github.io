@@ -174,36 +174,6 @@
 
     .hint.is-revealed { opacity: 1; }
 
-    .score {
-      position: fixed;
-      top: var(--gutter);
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 20;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--dim);
-      font-variant-numeric: tabular-nums;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 1s ease;
-    }
-
-    .score.is-visible { opacity: 1; }
-
-    .score-star {
-      display: inline-block;
-      color: #6f8dff;
-      transition: transform 0.7s var(--ease-out), color 0.6s ease;
-    }
-
-    .score.is-bump .score-star { transform: scale(1.7) rotate(72deg); transition-duration: 0.15s; }
-    .score.is-gold .score-star { color: #f0c36e; }
-
-    .cursor.is-target svg { transform: rotate(-90deg) scale(0.8); transition: transform 0.3s var(--ease-out); }
-    .cursor.is-target .ring-bg { stroke: #6f8dff; }
-
     .hint-bar {
       position: relative;
       width: 34px;
@@ -287,7 +257,6 @@
   </main>
 
   <span class="hint mono" aria-hidden="true"><span class="hint-bar"></span><span class="hint-text">Click &amp; hold</span></span>
-  <span class="score mono" aria-live="polite"><span class="score-star" aria-hidden="true">✦</span><span class="score-count">00</span></span>
 
   <div class="cursor" aria-hidden="true">
     <svg viewBox="0 0 64 64">
@@ -481,8 +450,6 @@
     function startHold(e) {
       if (!introDone) return;
       if (e.pointerType !== 'mouse') onPointerMove(e);
-      const hit = cometAt(e.clientX, e.clientY);
-      if (hit) { catchComet(hit); return; }
       holding = true;
       scramble(roleText, ROLE);
     }
@@ -560,8 +527,6 @@
       uniform float uSize;
       uniform float uScale;
       uniform float uMotion;
-      uniform float uPulse;
-      uniform vec3  uPulseColor;
       uniform sampler2D uTouch;
 
       attribute vec4 aSeed;
@@ -576,7 +541,7 @@
         vec3 dir = normalize(position);
         float shell = length(position);
         float flow = snoise(dir * 1.7 + vec3(0.0, uTime * 0.12, uTime * 0.08));
-        vec3 target = dir * shell * (1.0 + flow * (0.018 + uPulse * 0.04) * uMotion);
+        vec3 target = dir * shell * (1.0 + flow * 0.018 * uMotion);
         target.xz = rot(uTime * 0.07 * uMotion) * target.xz;
         target.yz = rot(0.35) * target.yz;
 
@@ -634,7 +599,6 @@
         vec3 discCol = mix(vec3(0.06, 0.20, 1.0), vec3(0.42, 0.58, 1.0), pow(1.0 - aSeed.x, 3.0));
         col = mix(col, discCol, b);
         col += vec3(0.05, 0.22, 1.0) * touch * 0.35;
-        col = mix(col, uPulseColor, uPulse * 0.55 * e * (1.0 - b) * (0.4 + crest * 0.6));
 
         // Clear the sphere's face so the photo and name sit in a calm centre
         float core = mix(0.22, 1.0, smoothstep(0.25, 0.85, length(target.xy) / 3.0));
@@ -697,8 +661,6 @@
         uMotion:   { value: reduceMotion ? 0.2 : 1 },
         uOpacity:  { value: reduceMotion ? 1 : 0 },
         uGain:     { value: 0.4 },
-        uPulse:      { value: 0 },
-        uPulseColor: { value: new THREE.Color(0.25, 0.55, 1.0) },
         uTouch:    { value: trail.texture },
       },
       transparent: true,
@@ -770,8 +732,6 @@
       uniforms: {
         uAlpha:  { value: 0 },
         uSphere: { value: new THREE.Vector3() },
-        uHead:   { value: new THREE.Color() },
-        uTail:   { value: new THREE.Color() },
       },
       vertexShader: /* glsl */`
         varying vec2 vUv;
@@ -780,14 +740,12 @@
       fragmentShader: /* glsl */`
         uniform float uAlpha;
         uniform vec3  uSphere; // screen centre (px) and radius (px)
-        uniform vec3  uHead;
-        uniform vec3  uTail;
         varying vec2 vUv;
         void main() {
           float across = 1.0 - abs(vUv.y - 0.5) * 2.0;
           float tail = pow(vUv.x, 2.6) * across * across;
           float head = smoothstep(0.9, 1.0, vUv.x) * across;
-          vec3 col = mix(uTail, uHead, pow(vUv.x, 4.0));
+          vec3 col = mix(vec3(0.08, 0.28, 1.0), vec3(0.62, 0.74, 1.0), pow(vUv.x, 4.0));
           // Dim where the sphere sits in front
           float d = distance(gl_FragCoord.xy, uSphere.xy);
           float occ = mix(0.15, 1.0, smoothstep(uSphere.z * 0.9, uSphere.z * 1.04, d));
@@ -812,7 +770,7 @@
     let nextComet = 1.5;
     const cometTanHalf = () => Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
 
-    function spawnComet(rare = false) {
+    function spawnComet() {
       const c = comets.find(c => !c.mesh.visible);
       if (!c) return;
       const z = -9 - Math.random() * 7;
@@ -822,17 +780,13 @@
       const angle = THREE.MathUtils.degToRad(18 + Math.random() * 22);
       c.dir.set(Math.cos(angle) * side, -Math.sin(angle));
       c.head.set(-side * halfW * (0.25 + Math.random() * 0.75), groupY + halfH * (0.2 + Math.random() * 0.8), z);
-      c.rare = rare;
-      c.speed = rare ? 5 + Math.random() * 2 : 7 + Math.random() * 5;
+      c.speed = 9 + Math.random() * 7;
       c.length = 3.2 + Math.random() * 3.2;
-      c.width = rare ? 0.1 : 0.05 + Math.random() * 0.03;
-      c.life = rare ? 3.4 : 2.2 + Math.random() * 0.8;
+      c.width = 0.05 + Math.random() * 0.03;
+      c.life = 1.5 + Math.random() * 1.0;
       c.age = 0;
       c.mesh.rotation.z = Math.atan2(c.dir.y, c.dir.x);
       c.mesh.scale.set(c.length, c.width, 1);
-      const u = c.mesh.material.uniforms;
-      u.uHead.value.setRGB(...(rare ? [1.0, 0.82, 0.5] : [0.62, 0.74, 1.0]));
-      u.uTail.value.setRGB(...(rare ? [0.55, 0.3, 0.06] : [0.08, 0.28, 1.0]));
       c.mesh.visible = true;
     }
 
@@ -841,7 +795,7 @@
       if (enabled) {
         nextComet -= dt;
         if (nextComet <= 0) {
-          spawnComet(shouldSpawnRare());
+          spawnComet();
           nextComet = 1.8 + Math.random() * 3.4;
         }
       }
@@ -863,286 +817,6 @@
         const u = c.mesh.material.uniforms;
         u.uAlpha.value = Math.min(c.age / 0.25, 1) * (1 - THREE.MathUtils.smoothstep(p, 0.55, 1)) * 1.25;
         u.uSphere.value.set((sphereScreen.x * 0.5 + 0.5) * bw, (sphereScreen.y * 0.5 + 0.5) * bh, radiusPx);
-      }
-    }
-
-    // ── Game: catch comets, find the constellation ───────────────────────
-    const STORE_KEY = 'ag.comets';
-    const game = { caught: 0, found: false };
-    try {
-      const saved = JSON.parse(localStorage.getItem(STORE_KEY));
-      if (saved && Number.isFinite(saved.caught)) game.caught = Math.max(0, saved.caught | 0);
-      if (saved && saved.found === true) game.found = true;
-    } catch {}
-
-    function saveGame() {
-      try { localStorage.setItem(STORE_KEY, JSON.stringify(game)); } catch {}
-    }
-
-    const scoreEl    = document.querySelector('.score');
-    const scoreCount = document.querySelector('.score-count');
-    const RARE_AFTER = 3;
-    let rareSpawned = false;
-
-    function updateScore(bump) {
-      scoreCount.textContent = String(game.caught).padStart(2, '0');
-      scoreEl.classList.toggle('is-gold', game.found);
-      if (game.caught > 0 && revealed) scoreEl.classList.add('is-visible');
-      if (bump) {
-        scoreEl.classList.remove('is-bump');
-        void scoreEl.offsetWidth;
-        scoreEl.classList.add('is-bump');
-        setTimeout(() => scoreEl.classList.remove('is-bump'), 160);
-      }
-    }
-
-    // The first spawn after the third catch is always the gold comet; after that it shows up now and then
-    function shouldSpawnRare() {
-      if (game.found || game.caught < RARE_AFTER) return false;
-      if (comets.some(c => c.mesh.visible && c.rare)) return false;
-      const rare = !rareSpawned || Math.random() < 0.35;
-      if (rare) rareSpawned = true;
-      return rare;
-    }
-
-    const hitA = new THREE.Vector3(), hitB = new THREE.Vector3();
-    function cometAt(x, y) {
-      const radius = isCoarse ? 46 : 34;
-      for (const c of comets) {
-        if (!c.mesh.visible || c.age / c.life > 0.9) continue;
-        hitA.copy(c.head).project(camera);
-        hitB.set(c.head.x - c.dir.x * c.length * 0.6, c.head.y - c.dir.y * c.length * 0.6, c.head.z).project(camera);
-        const ax = (hitA.x * 0.5 + 0.5) * innerWidth, ay = (0.5 - hitA.y * 0.5) * innerHeight;
-        const bx = (hitB.x * 0.5 + 0.5) * innerWidth, by = (0.5 - hitB.y * 0.5) * innerHeight;
-        const vx = bx - ax, vy = by - ay;
-        const t = clamp01(((x - ax) * vx + (y - ay) * vy) / (vx * vx + vy * vy || 1));
-        if (Math.hypot(x - (ax + vx * t), y - (ay + vy * t)) < radius) return c;
-      }
-      return null;
-    }
-
-    // Burst: a spray of sparks that falls into the sphere
-    const SPARKS = 600;
-    const sparkPos   = new Float32Array(SPARKS * 3);
-    const sparkCol   = new Float32Array(SPARKS * 3);
-    const sparkAlpha = new Float32Array(SPARKS);
-    const sparkVel   = new Float32Array(SPARKS * 3);
-    const sparkAge   = new Float32Array(SPARKS);
-    const sparkLife  = new Float32Array(SPARKS);
-    let sparkCursor = 0;
-    let sparksActive = 0;
-
-    const sparkGeo = new THREE.BufferGeometry();
-    sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPos, 3).setUsage(THREE.DynamicDrawUsage));
-    sparkGeo.setAttribute('aColor',   new THREE.BufferAttribute(sparkCol, 3).setUsage(THREE.DynamicDrawUsage));
-    sparkGeo.setAttribute('aAlpha',   new THREE.BufferAttribute(sparkAlpha, 1).setUsage(THREE.DynamicDrawUsage));
-
-    const sparkMat = new THREE.ShaderMaterial({
-      uniforms: { uScale: { value: 1 }, uOpacity: { value: 1 }, uGain: { value: 1 } },
-      vertexShader: /* glsl */`
-        uniform float uScale;
-        attribute vec3  aColor;
-        attribute float aAlpha;
-        varying vec3  vColor;
-        varying float vAlpha;
-        void main() {
-          vec4 mv = modelViewMatrix * vec4(position, 1.0);
-          gl_Position = projectionMatrix * mv;
-          vColor = aColor;
-          vAlpha = aAlpha;
-          gl_PointSize = clamp(0.06 * uScale / -mv.z, 1.0, 7.0);
-        }
-      `,
-      fragmentShader: pointFragment,
-      transparent: true,
-      depthWrite: false,
-      depthTest: false,
-      blending: THREE.AdditiveBlending,
-    });
-    const sparks = new THREE.Points(sparkGeo, sparkMat);
-    sparks.frustumCulled = false;
-    scene.add(sparks);
-
-    function emitSparks(origin, rare) {
-      const n = rare ? 160 : 80;
-      for (let k = 0; k < n; k++) {
-        const i = sparkCursor++ % SPARKS;
-        const th = Math.random() * Math.PI * 2, ph = Math.acos(Math.random() * 2 - 1);
-        const sp = 1.5 + Math.random() * (rare ? 6 : 4);
-        sparkPos.set([origin.x, origin.y, origin.z], i * 3);
-        sparkVel.set([Math.sin(ph) * Math.cos(th) * sp, Math.sin(ph) * Math.sin(th) * sp, Math.cos(ph) * sp], i * 3);
-        sparkAge[i] = 0;
-        sparkLife[i] = 1.6 + Math.random() * 1.0;
-        const c = rare
-          ? [1.0, 0.7 + Math.random() * 0.15, 0.35 + Math.random() * 0.15]
-          : [0.15 + Math.random() * 0.3, 0.35 + Math.random() * 0.3, 1.0];
-        sparkCol.set(c, i * 3);
-      }
-      sparksActive = SPARKS;
-    }
-
-    function updateSparks(dt) {
-      if (!sparksActive) return;
-      let alive = 0;
-      for (let i = 0; i < SPARKS; i++) {
-        if (sparkLife[i] <= 0) { sparkAlpha[i] = 0; continue; }
-        sparkAge[i] += dt;
-        const t = sparkAge[i] / sparkLife[i];
-        const ix = i * 3;
-        const dx = -sparkPos[ix], dy = groupY - sparkPos[ix + 1], dz = -sparkPos[ix + 2];
-        const d = Math.hypot(dx, dy, dz) || 1;
-        // Pulled toward the sphere harder as they age
-        const pull = 4 + t * 30;
-        const drag = Math.exp(-dt * 1.8);
-        sparkVel[ix]     = (sparkVel[ix]     + dx / d * pull * dt) * drag;
-        sparkVel[ix + 1] = (sparkVel[ix + 1] + dy / d * pull * dt) * drag;
-        sparkVel[ix + 2] = (sparkVel[ix + 2] + dz / d * pull * dt) * drag;
-        sparkPos[ix]     += sparkVel[ix] * dt;
-        sparkPos[ix + 1] += sparkVel[ix + 1] * dt;
-        sparkPos[ix + 2] += sparkVel[ix + 2] * dt;
-        const absorbed = d < SPHERE_R * 1.02;
-        if (t >= 1 || absorbed) { sparkLife[i] = 0; sparkAlpha[i] = 0; continue; }
-        sparkAlpha[i] = Math.min(sparkAge[i] / 0.08, 1) * (1 - t) * 1.6;
-        alive++;
-      }
-      sparkGeo.attributes.position.needsUpdate = true;
-      sparkGeo.attributes.aAlpha.needsUpdate = true;
-      sparkGeo.attributes.aColor.needsUpdate = true;
-      if (!alive) sparksActive = 0;
-    }
-
-    // Constellation: the "AG" monogram drawn in stars
-    const AG_STARS = [
-      [0.0, 0.0], [0.5, 1.2], [1.0, 0.0], [0.25, 0.55], [0.75, 0.55],
-      [2.45, 1.0], [1.95, 1.2], [1.5, 0.95], [1.35, 0.45], [1.6, 0.02], [2.1, -0.05], [2.45, 0.3], [2.45, 0.5], [2.0, 0.5],
-    ];
-    const AG_LINES = [[0, 1], [1, 2], [3, 4], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 12], [12, 13]];
-
-    const linePos = [], lineProg = [];
-    AG_LINES.forEach(([a, b], i) => {
-      linePos.push(AG_STARS[a][0] - 1.22, AG_STARS[a][1] - 0.6, 0, AG_STARS[b][0] - 1.22, AG_STARS[b][1] - 0.6, 0);
-      lineProg.push(i / AG_LINES.length, (i + 1) / AG_LINES.length);
-    });
-    const starPos = [], starProg = [];
-    AG_STARS.forEach(([x, y], i) => {
-      starPos.push(x - 1.22, y - 0.6, 0);
-      // A star lights up when its first line reaches it
-      const li = AG_LINES.findIndex(l => l.includes(i));
-      starProg.push(li / AG_LINES.length);
-    });
-
-    const agUniforms = { uReveal: { value: 0 }, uAlpha: { value: 0 }, uTime: { value: 0 }, uScale: { value: 1 } };
-    const agLineGeo = new THREE.BufferGeometry();
-    agLineGeo.setAttribute('position', new THREE.Float32BufferAttribute(linePos, 3));
-    agLineGeo.setAttribute('aProg', new THREE.Float32BufferAttribute(lineProg, 1));
-    const agStarGeo = new THREE.BufferGeometry();
-    agStarGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
-    agStarGeo.setAttribute('aProg', new THREE.Float32BufferAttribute(starProg, 1));
-
-    const agBlend = { transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending };
-    const agLines = new THREE.LineSegments(agLineGeo, new THREE.ShaderMaterial({
-      uniforms: agUniforms,
-      vertexShader: /* glsl */`
-        attribute float aProg;
-        varying float vProg;
-        void main() { vProg = aProg; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
-      `,
-      fragmentShader: /* glsl */`
-        uniform float uReveal;
-        uniform float uAlpha;
-        varying float vProg;
-        void main() {
-          if (vProg > uReveal) discard;
-          gl_FragColor = vec4(vec3(0.3, 0.45, 1.0) * uAlpha * 0.55, 1.0);
-        }
-      `,
-      ...agBlend,
-    }));
-    const agStars = new THREE.Points(agStarGeo, new THREE.ShaderMaterial({
-      uniforms: agUniforms,
-      vertexShader: /* glsl */`
-        uniform float uReveal;
-        uniform float uTime;
-        uniform float uScale;
-        attribute float aProg;
-        varying float vOn;
-        varying float vTw;
-        void main() {
-          vec4 mv = modelViewMatrix * vec4(position, 1.0);
-          gl_Position = projectionMatrix * mv;
-          vOn = smoothstep(aProg, aProg + 0.04, uReveal);
-          vTw = 0.75 + 0.25 * sin(uTime * 2.0 + position.x * 7.0 + position.y * 5.0);
-          gl_PointSize = clamp(0.16 * uScale / -mv.z, 2.0, 12.0) * (0.6 + vOn * 0.4);
-        }
-      `,
-      fragmentShader: /* glsl */`
-        uniform float uAlpha;
-        varying float vOn;
-        varying float vTw;
-        void main() {
-          float d = length(gl_PointCoord - 0.5);
-          if (d > 0.5) discard;
-          float a = (1.0 - smoothstep(0.12, 0.2, d)) + pow(1.0 - d * 2.0, 3.0) * 0.6;
-          gl_FragColor = vec4(vec3(0.6, 0.72, 1.0) * a * vOn * vTw * uAlpha, 1.0);
-        }
-      `,
-      ...agBlend,
-    }));
-    const agGroup = new THREE.Group();
-    agGroup.add(agLines, agStars);
-    agGroup.visible = false;
-    agLines.frustumCulled = agStars.frustumCulled = false;
-    scene.add(agGroup);
-
-    const constellation = { reveal: 0, alpha: 0, target: 0, discoveredAt: -1 };
-
-    function layoutConstellation() {
-      const z = -13;
-      const halfH = (baseDist - z) * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-      const halfW = halfH * camera.aspect;
-      const wide = camera.aspect > 1;
-      const scale = Math.min(halfH * 0.16, halfW * 0.3);
-      agGroup.position.set(wide ? halfW * 0.6 : 0, groupY + halfH * (wide ? 0.55 : 0.74), z);
-      agGroup.scale.setScalar(scale);
-    }
-
-    function catchComet(c) {
-      c.mesh.visible = false;
-      emitSparks(c.head, c.rare);
-      pulse = 1;
-      sphereMat.uniforms.uPulseColor.value.setRGB(...(c.rare ? [1.0, 0.7, 0.35] : [0.25, 0.55, 1.0]));
-      game.caught++;
-      if (c.rare && !game.found) {
-        game.found = true;
-        constellation.reveal = 0;
-        constellation.target = 1;
-        constellation.discoveredAt = performance.now();
-        agGroup.visible = true;
-        setTimeout(() => decode(roleText, 'You found the secret', 1200), 900);
-        setTimeout(() => { if (!holding) decode(roleText, ROLE, 1200); }, 5200);
-      }
-      saveGame();
-      updateScore(true);
-    }
-
-    let pulse = 0;
-    function updateGame(dt, t) {
-      pulse *= Math.exp(-dt * 1.4);
-      sphereMat.uniforms.uPulse.value = pulse;
-      updateSparks(dt);
-
-      if (agGroup.visible) {
-        const fresh = constellation.discoveredAt > 0 && performance.now() - constellation.discoveredAt < 6000;
-        constellation.reveal = Math.min(constellation.reveal + dt / 2.4, constellation.target);
-        const goalAlpha = fresh ? 1 : 0.45;
-        constellation.alpha += (goalAlpha - constellation.alpha) * (1 - Math.exp(-dt * 1.5));
-        agUniforms.uReveal.value = constellation.reveal * 1.04;
-        agUniforms.uAlpha.value = constellation.alpha * (1 - burst * 0.7);
-        agUniforms.uTime.value = t;
-      }
-
-      if (!isCoarse && pointer.active && introDone) {
-        cursorEl.classList.toggle('is-target', !holding && !!cometAt(pointer.x, pointer.y));
       }
     }
 
@@ -1240,9 +914,6 @@
       sphereMat.uniforms.uScale.value = scale;
       dustMat.uniforms.uScale.value = scale;
 
-      sparkMat.uniforms.uScale.value = scale;
-      agUniforms.uScale.value = scale;
-      layoutConstellation();
       resizeTrail();
     }
 
@@ -1270,12 +941,7 @@
       revealed = true;
       contentEl.classList.add('is-revealed');
       setTimeout(() => decode(roleText, ROLE, 1400), reduceMotion ? 0 : 900);
-      setTimeout(() => {
-        hintEl.classList.add('is-revealed');
-        updateScore(false);
-        // Returning visitors who found the secret keep a faint constellation
-        if (game.found) { agGroup.visible = true; constellation.target = 1; }
-      }, reduceMotion ? 0 : 1800);
+      setTimeout(() => hintEl.classList.add('is-revealed'), reduceMotion ? 0 : 1800);
     }
 
     const start = performance.now();
@@ -1356,7 +1022,6 @@
       finalPass.uniforms.uGlow.value = clamp01(intro / 2.5) * (1 + burst * 0.3);
 
       updateComets(dt, introDone && !reduceMotion);
-      updateGame(dt, t);
       updateTrail(dt);
       composer.render();
     }
